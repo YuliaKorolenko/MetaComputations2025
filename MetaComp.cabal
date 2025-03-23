@@ -67,13 +67,22 @@ executable MetaComp
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1, containers, mtl >= 2.2.2 && < 2.3, transformers >= 0.5.6.2
+    build-depends:    base >=4.7 && <5, containers, mtl >= 2.2.2 && < 2.3, transformers >= 0.5.6.2
 
     -- Directories containing source files.
     hs-source-dirs:   app, 
-                      src
+                      src,
+                      test
     
-    other-modules:   Ast, Interpret
+    other-modules:   Ast, Interpret, Dsl, Spec
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+-- test-suite flowchart-test
+--     type: exitcode-stdio-1.0
+--     main-is:             Spec.hs
+--     build-depends:       base >=4.7 && <5, containers, mtl >= 2.2.2 && < 2.3, transformers >= 0.5.6.2, tasty, tasty-hspec, hspec
+--     hs-source-dirs:      test, src, app
+--     other-modules:       Ast, Interpret
+--     default-language:    Haskell2010

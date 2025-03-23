@@ -5,6 +5,7 @@ module Interpret where
 import Control.Monad.State (StateT, put, MonadState(get), MonadTrans(lift), evalStateT)
 import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class (liftIO)
+import Debug.Trace
 import qualified Data.Map.Strict as M
 
 import Ast
@@ -17,7 +18,8 @@ type LabelMap = M.Map String [BasicBlock]
 type EvalM = StateT (VarMap, LabelMap) (ExceptT Error IO)                           
 
 evalVarMap :: Program -> VarMap -> EvalM Int
-evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap =
+evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
+    liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
         Just val -> do
             liftIO $ putStrLn ("Curren var : " ++ show varName ++ " " ++ show val)
