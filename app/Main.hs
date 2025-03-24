@@ -6,18 +6,21 @@ import Ast
 import Interpret
 import Dsl
 
-testProgram :: Program
-testProgram = program ["a", "b"]                               
-  [ BasicBlock
-      (Label "hi")                                    
-      [constAssigment "x" 128]                                       
-      (RETURN (VAR (VarName "x"))  
-      )
-  ]
 
+maxProgram :: Program
+maxProgram = program ["a", "b"]
+ [
+    blockJump [] 
+      (IF (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b"))) (Label "oneHundred") (Label "plus")),
 
-testProgramVar :: Program
-testProgramVar = Program [VarName "x", VarName "y"] []                              
+    blockLabJump "oneHundred"
+      [constAssigment "result" 100]
+      (returnCnst "result"),
+
+    blockLabJump "plus"
+      [assigment "res" (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b")))]
+      (returnCnst "res")
+  ]                          
 
 main :: IO ()
 main = do

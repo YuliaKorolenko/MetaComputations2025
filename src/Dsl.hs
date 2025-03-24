@@ -12,8 +12,8 @@ program vars = Program (map VarName vars)
 assigment :: String -> Expr -> Assigment
 assigment varName = Assigment (VarName varName)
 
-constAssigment :: String -> Int -> Assigment
-constAssigment varName cnst = Assigment (VarName varName) (CONST cnst)
+constIntAssigment :: String -> Int -> Assigment
+constIntAssigment varName cnst = Assigment (VarName varName) (Constant (IntConst cnst))
 
 varAssigment :: String -> String -> Assigment
 varAssigment varName varAssign = Assigment (VarName varName) (VAR (VarName varAssign))

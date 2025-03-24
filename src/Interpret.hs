@@ -12,12 +12,12 @@ import Ast
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
-type VarMap = M.Map String Int
+type VarMap = M.Map String Constant
 type LabelMap = M.Map String [BasicBlock]
 
 type EvalM = StateT (VarMap, LabelMap) (ExceptT Error IO)                           
 
-evalVarMap :: Program -> VarMap -> EvalM Int
+evalVarMap :: Program -> VarMap -> EvalM Constant
 evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
     liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
@@ -44,7 +44,7 @@ evalLabels ((BasicBlock EmptyLabel _ _) : tailBlocks) = evalLabels tailBlocks
 evalLabels [] = M.empty
 
 
-handleLabel :: Label -> Jump -> EvalM Int
+handleLabel :: Label -> Jump -> EvalM Constant
 handleLabel EmptyLabel instr  = 
     lift $ throwE $ UnexpectedElement ("Expected a non-empty label, but got EmptyLabel in '" ++ show instr ++ "'instruction.")
 handleLabel (Label labelName) _ = do
@@ -53,17 +53,17 @@ handleLabel (Label labelName) _ = do
         Just basicBlocks -> evalBasicBlocks basicBlocks
         Nothing -> lift $ throwE $ UnexpectedElement ("Expected a label named '" ++ labelName ++ "', but it was not found in the LabelMap.")
 
-handleJumpBlock :: BasicBlock -> EvalM Int
+handleJumpBlock :: BasicBlock -> EvalM Constant
 handleJumpBlock (BasicBlock _ _ instr@(GOTO goLabel)) = handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(IF curExpr trueLabel falseLabel)) = do
     val <- evalExpr curExpr
     case val of
-        1 -> handleLabel trueLabel instr
+        IntConst 1 -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
 handleJumpBlock (BasicBlock _ _ (RETURN curExpr)) = evalExpr curExpr
 handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
 
-evalBasicBlocks :: [BasicBlock] -> EvalM Int
+evalBasicBlocks :: [BasicBlock] -> EvalM Constant
 evalBasicBlocks (BasicBlock _ assigments EMPTYJUMP : tailBlocks) = do
     evalAssigments assigments
     evalBasicBlocks tailBlocks
@@ -81,19 +81,36 @@ evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
     evalAssigments assigmentTail
 evalAssigments [] = return ()
 
-evalExpr :: Expr -> EvalM Int
-evalExpr (CONST constant) = return constant
+evalExpr :: Expr -> EvalM Constant
+evalExpr (Constant constant) = return constant
 evalExpr (VAR (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
         Just element -> return element
         Nothing -> lift $ throwE $ VariableNotFound varName
-evalExpr (BinOP op expr1 expr2 ) = case op of
-    Plus -> do 
-        leftEl <- evalExpr expr1
-        rightEl <- evalExpr expr2
-        return (leftEl + rightEl)
+evalExpr (BinOP op expr1 expr2 ) = do
+    leftEl <- evalExpr expr1
+    rightEl <- evalExpr expr2
+    case op of
+        Plus -> return $ plus leftEl rightEl
+evalExpr (UnOp op expr) = do 
+    res <- evalExpr expr
+    case op of
+        Hd -> return $ headOp res
+        Tl -> return $ tailOp res
 
+plus :: Constant -> Constant -> Constant
+plus (IntConst intLeft) (IntConst intRight) = IntConst $ intLeft + intRight
+plus (List listLeft) (List listRight) = List $ listLeft ++ listRight
+plus (StrConst strLeft) (StrConst strRight) = StrConst $ strLeft ++ strRight
 
-eval ::  Program -> VarMap -> IO (Either Error Int)
+headOp :: Constant -> Constant
+headOp (List (a : aTail)) = a
+headOp _ = undefined
+
+tailOp :: Constant -> Constant
+tailOp (List (a : aTail)) = List aTail
+tailOp (StrConst (a : aTail)) = StrConst aTail
+
+eval ::  Program -> VarMap -> IO (Either Error Constant)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))
