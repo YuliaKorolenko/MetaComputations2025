@@ -15,21 +15,6 @@ testProgram = program ["a", "b"]
       )
   ]
 
-maxProgram :: Program
-maxProgram = program ["a", "b"]
- [
-    blockLab "start" 
-        [] 
-        (IF (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b"))) (Label "oneHundred") (Label "minus")),
-
-    blockLab "oneHundred"
-      [constAssigment "result" 100]
-      (RETURN (VAR (VarName "result"))),
-
-    blockLab "minus"
-      [assigment "res" (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b")))]
-      (RETURN (VAR (VarName "res")))
-  ]
 
 testProgramVar :: Program
 testProgramVar = Program [VarName "x", VarName "y"] []                              

@@ -22,7 +22,7 @@ evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
     liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
         Just val -> do
-            liftIO $ putStrLn ("Curren var : " ++ show varName ++ " " ++ show val)
+            traceM ("Curren var : " ++ show varName ++ " " ++ show val)
             (currentVarMap, currentLabelMap) <- get 
             let updatedState = M.insert varName val currentVarMap
             put (updatedState, currentLabelMap)
@@ -70,7 +70,7 @@ evalBasicBlocks (BasicBlock _ assigments EMPTYJUMP : tailBlocks) = do
 evalBasicBlocks (block@(BasicBlock _ assigments _) : _) = do
     evalAssigments assigments
     handleJumpBlock block
-evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "In eval basic blocks"
+evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in any block"
 
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do

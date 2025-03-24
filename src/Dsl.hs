@@ -20,8 +20,16 @@ varAssigment varName varAssign = Assigment (VarName varName) (VAR (VarName varAs
 
 
 -- Block
-blockLab :: String -> [Assigment] -> Jump -> BasicBlock
-blockLab labelName = BasicBlock (Label labelName)
+blockLabJump :: String -> [Assigment] -> Jump -> BasicBlock
+blockLabJump labelName = BasicBlock (Label labelName)
 
-block :: [Assigment] -> Jump -> BasicBlock
-block = BasicBlock EmptyLabel 
+blockJump :: [Assigment] -> Jump -> BasicBlock
+blockJump = BasicBlock EmptyLabel 
+
+block :: [Assigment] -> BasicBlock
+block assigments = BasicBlock EmptyLabel assigments EMPTYJUMP
+
+
+-- Return
+returnCnst :: String -> Jump
+returnCnst str = RETURN (VAR (VarName str))
