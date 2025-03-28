@@ -9,6 +9,7 @@ import Debug.Trace
 import qualified Data.Map.Strict as M
 
 import Ast
+import Data.Type.Equality (TestEquality)
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
@@ -88,16 +89,21 @@ evalExpr (VAR (VarName varName)) = do
     case M.lookup varName currentVarMap of
         Just element -> return element
         Nothing -> lift $ throwE $ VariableNotFound varName
-evalExpr (BinOP op expr1 expr2 ) = do
+evalExpr (BinOP op expr1 expr2) = do
     leftEl <- evalExpr expr1
     rightEl <- evalExpr expr2
+    traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl) 
     case op of
         Plus -> return $ plus leftEl rightEl
+        Equal -> return $ equal leftEl rightEl
 evalExpr (UnOp op expr) = do 
     res <- evalExpr expr
     case op of
         Hd -> return $ headOp res
         Tl -> return $ tailOp res
+
+equal :: Constant -> Constant -> Constant
+equal x y = if x == y then IntConst 1 else IntConst 0
 
 plus :: Constant -> Constant -> Constant
 plus (IntConst intLeft) (IntConst intRight) = IntConst $ intLeft + intRight

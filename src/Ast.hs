@@ -19,13 +19,12 @@ newtype VarName = VarName String deriving (Show)
 
 data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show)
 
-data BinOp = Plus deriving Show
+data BinOp = Plus | Equal deriving Show 
 
 data UnOp = Hd |
             Tl deriving Show
 
 data Constant = IntConst Int | List [Constant] | StrConst String deriving (Show, Eq)
-
 
 data Expr 
     = Constant Constant |

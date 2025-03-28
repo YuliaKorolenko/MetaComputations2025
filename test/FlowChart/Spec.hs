@@ -8,26 +8,27 @@ import qualified Data.Map as M
 import Interpret
 import Dsl
 import Ast 
+import TInterpreter (turingInterpreter)
 
 testProgramVar :: Program
 testProgramVar = program ["x", "y"] 
-                [blockJump [] $ returnCnst "x"]
+                [bj [] $ returnCnst "x"]
 
 testProgramXY = Program [] 
               [block [constIntAssigment "x"  4],
-              blockJump [constIntAssigment "y" 6] $ returnCnst "x"]
+               bj [constIntAssigment "y" 6] $ returnCnst "x"]
 
 maxProgram :: Program
 maxProgram = program ["a", "b"]
  [
-    blockJump [] 
+    bj [] 
       (IF (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b"))) (Label "oneHundred") (Label "plus")),
 
-    blockLabJump "oneHundred"
+    BasicBlock (Label "oneHundred")
       [constIntAssigment "result" 100]
       (returnCnst "result"),
 
-    blockLabJump "plus"
+    BasicBlock (Label "plus")
       [assigment "res" (BinOP Plus (VAR (VarName "a")) (VAR (VarName "b")))]
       (returnCnst "res")
   ]
@@ -57,6 +58,15 @@ spec = do
           Right value -> do 
             let expected = if a + b == 1 then 100 else a + b
             value `shouldBe` IntConst expected
+  describe "Turing maschine test" $ do
+    it "correctly evaluate turing maschine programes" $ do
+      let q = lStr ["if 0 goto 3", "right", "goto 0", "write 1"]
+      let emptyq = lStr []
+      let right = lInt [1, 1, 1, 1, 0, 1]
+      result <- eval turingInterpreter (M.fromList [("Q", emptyq), ("Right", right)])
+      case result of 
+        Left err -> putStrLn $ "Error: " ++ show err
+        Right value -> putStrLn $ "Value: " ++ show value
             
 
 
