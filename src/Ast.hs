@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Use camelCase" #-}
 module Ast where
+import Data.Typeable (Typeable, cast)
 
 
 data Program = Program [VarName] [BasicBlock]
@@ -19,7 +20,7 @@ newtype VarName = VarName String deriving (Show)
 
 data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show)
 
-data BinOp = Plus | Equal deriving Show 
+data BinOp = PLUS | EQUAL | DROPWHILE | DROP deriving Show 
 
 data UnOp = Hd |
             Tl deriving Show
@@ -30,7 +31,7 @@ data Expr
     = Constant Constant |
     VAR VarName |
     BinOP BinOp Expr Expr |
-    UnOp UnOp Expr
-    deriving (Show)
+    UnOp UnOp Expr 
+    deriving (Show, Typeable)
 
 data Label = Label String | EmptyLabel deriving (Show)

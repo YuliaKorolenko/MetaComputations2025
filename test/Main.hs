@@ -2,6 +2,9 @@ module Main (main) where
 
 import Test.Hspec
 import FlowChart.Spec
+import TuringMachine.Spec
 
 main :: IO ()
-main = hspec spec
+main = do
+    hspec spec
+    hspec specTM

@@ -89,3 +89,11 @@ test-suite flowchart-test
     hs-source-dirs:      test 
     other-modules:       FlowChart.Spec
     default-language:    Haskell2010
+
+test-suite turingmachine-test
+    type: exitcode-stdio-1.0
+    main-is:             Main.hs
+    build-depends:       base >=4.7 && <5, containers, mtl >= 2.2.2 && < 2.3, transformers >= 0.5.6.2, tasty, tasty-hspec, hspec, MetaComp
+    hs-source-dirs:      test 
+    other-modules:       TuringMachine.Spec
+    default-language:    Haskell2010

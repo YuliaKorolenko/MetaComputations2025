@@ -1,11 +1,10 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use camelCase" #-}
 module Interpret where
 
 import Control.Monad.State (StateT, put, MonadState(get), MonadTrans(lift), evalStateT)
 import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class (liftIO)
-import Debug.Trace
+import Debug.Trace (traceM, trace)
 import qualified Data.Map.Strict as M
 
 import Ast
@@ -16,15 +15,15 @@ data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement S
 type VarMap = M.Map String Constant
 type LabelMap = M.Map String [BasicBlock]
 
-type EvalM = StateT (VarMap, LabelMap) (ExceptT Error IO)                           
+type EvalM = StateT (VarMap, LabelMap) (ExceptT Error IO)
 
 evalVarMap :: Program -> VarMap -> EvalM Constant
 evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
-    liftIO $ traceM "evalVarMap"
+    -- liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
         Just val -> do
-            traceM ("Curren var : " ++ show varName ++ " " ++ show val)
-            (currentVarMap, currentLabelMap) <- get 
+            -- traceM ("Curren var here : " ++ show varName ++ " " ++ show val)
+            (currentVarMap, currentLabelMap) <- get
             let updatedState = M.insert varName val currentVarMap
             put (updatedState, currentLabelMap)
             evalVarMap (Program varTail basicBlocks) varMap
@@ -33,20 +32,18 @@ evalVarMap (Program [] basicBlocks) _ = do
     let labelMap = evalLabels basicBlocks
     (currentVarMap, _) <- get
     put (currentVarMap, labelMap)
-    -- (_, currentLabelMap1) <- get
-    -- liftIO $ do
-    --     putStrLn "Current LabelMap:"
-    --     mapM_ (\(k, v) -> putStrLn $ k ++ " -> " ++ show v) (M.toList currentLabelMap1)
     evalBasicBlocks basicBlocks
 
 evalLabels :: [BasicBlock] -> LabelMap
-evalLabels (curBlock@(BasicBlock (Label label) _ _) : tailBlocks) = M.insert label (curBlock : tailBlocks) (evalLabels tailBlocks)
+evalLabels (curBlock@(BasicBlock (Label label) _ _) : tailBlocks) =
+    -- trace ("LABELS INSERT: " ++ label ++ " ")
+    M.insert label (curBlock : tailBlocks) (evalLabels tailBlocks)
 evalLabels ((BasicBlock EmptyLabel _ _) : tailBlocks) = evalLabels tailBlocks
 evalLabels [] = M.empty
 
 
 handleLabel :: Label -> Jump -> EvalM Constant
-handleLabel EmptyLabel instr  = 
+handleLabel EmptyLabel instr  =
     lift $ throwE $ UnexpectedElement ("Expected a non-empty label, but got EmptyLabel in '" ++ show instr ++ "'instruction.")
 handleLabel (Label labelName) _ = do
     (_, currentLabelMap) <- get
@@ -58,6 +55,7 @@ handleJumpBlock :: BasicBlock -> EvalM Constant
 handleJumpBlock (BasicBlock _ _ instr@(GOTO goLabel)) = handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(IF curExpr trueLabel falseLabel)) = do
     val <- evalExpr curExpr
+    -- traceM ("IF block: " ++ show val ++ " truelabel: " ++ show trueLabel ++ "false Label: " ++ show falseLabel)
     case val of
         IntConst 1 -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
@@ -66,9 +64,11 @@ handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
 
 evalBasicBlocks :: [BasicBlock] -> EvalM Constant
 evalBasicBlocks (BasicBlock _ assigments EMPTYJUMP : tailBlocks) = do
+    -- traceM "evalBasicBlocks empty jump"
     evalAssigments assigments
     evalBasicBlocks tailBlocks
 evalBasicBlocks (block@(BasicBlock _ assigments _) : _) = do
+    -- traceM "evalBasicBlocks jump"
     evalAssigments assigments
     handleJumpBlock block
 evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in any block"
@@ -76,6 +76,7 @@ evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
     result <- evalExpr expr1
+    -- traceM ("Varname: " ++ varName ++ " result: " ++ show result)
     (currentVarMap, currentLabelMap) <- get
     let updatedVarMap = M.insert varName result currentVarMap
     put (updatedVarMap, currentLabelMap)
@@ -92,11 +93,13 @@ evalExpr (VAR (VarName varName)) = do
 evalExpr (BinOP op expr1 expr2) = do
     leftEl <- evalExpr expr1
     rightEl <- evalExpr expr2
-    traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl) 
+    -- traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl)
     case op of
-        Plus -> return $ plus leftEl rightEl
-        Equal -> return $ equal leftEl rightEl
-evalExpr (UnOp op expr) = do 
+        PLUS -> return $ plus leftEl rightEl
+        EQUAL -> return $ equal leftEl rightEl
+        DROPWHILE -> return $ dropWhileOp leftEl rightEl
+        DROP -> return $ dropOp leftEl rightEl
+evalExpr (UnOp op expr) = do
     res <- evalExpr expr
     case op of
         Hd -> return $ headOp res
@@ -105,9 +108,16 @@ evalExpr (UnOp op expr) = do
 equal :: Constant -> Constant -> Constant
 equal x y = if x == y then IntConst 1 else IntConst 0
 
+dropWhileOp :: Constant -> Constant -> Constant
+dropWhileOp a (List b) = List $ dropWhile (/= a) b
+
+dropOp :: Constant -> Constant -> Constant
+dropOp (IntConst a) (List b) = List $ drop a b
+
 plus :: Constant -> Constant -> Constant
 plus (IntConst intLeft) (IntConst intRight) = IntConst $ intLeft + intRight
 plus (List listLeft) (List listRight) = List $ listLeft ++ listRight
+plus const (List listRight) = List $ const : listRight
 plus (StrConst strLeft) (StrConst strRight) = StrConst $ strLeft ++ strRight
 
 headOp :: Constant -> Constant
