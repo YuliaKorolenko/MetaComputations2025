@@ -16,7 +16,7 @@ data Jump
     | EMPTYJUMP
     deriving (Show)
 
-newtype VarName = VarName String deriving (Show)
+newtype VarName = VarName String deriving (Show, Eq, Ord)
 
 data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show)
 
