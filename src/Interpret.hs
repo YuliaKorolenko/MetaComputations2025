@@ -6,7 +6,7 @@ import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Debug.Trace (traceM, trace)
 import qualified Data.Map.Strict as M
-import Data.List(nub)
+import Data.List(nub, find)
 
 import Ast
 import Data.Type.Equality (TestEquality)
@@ -59,7 +59,7 @@ handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     val <- evalExpr curExpr
     -- traceM ("IF block: " ++ show val ++ " truelabel: " ++ show trueLabel ++ "false Label: " ++ show falseLabel)
     case val of
-        IntConst 1 -> handleLabel trueLabel instr
+        IntC 1 -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
 handleJumpBlock (BasicBlock _ _ (Return curExpr)) = evalExpr curExpr
 handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
@@ -86,13 +86,13 @@ evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
 evalAssigments [] = return ()
 
 evalExpr :: Expr -> EvalM Constant
-evalExpr (Constant constant) = return constant
-evalExpr (Var (VarName varName)) = do
+evalExpr (EConstant constant) = return constant
+evalExpr (EVar (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
         Just element -> return element
         Nothing -> lift $ throwE $ VariableNotFound varName
-evalExpr (BinOP op expr1 expr2) = do
+evalExpr (EBinOP op expr1 expr2) = do
     leftEl <- evalExpr expr1
     rightEl <- evalExpr expr2
     -- traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl)
@@ -103,41 +103,62 @@ evalExpr (BinOP op expr1 expr2) = do
         Drop -> return $ dropOp leftEl rightEl
         Union -> return $ unionOp leftEl rightEl
         Lookup -> return $ lookupOp leftEl rightEl
-evalExpr (UnOp op expr) = do
+evalExpr (EUnOp op expr) = do
     res <- evalExpr expr
     case op of
         Hd -> return $ headOp res
         Tl -> return $ tailOp res
 
 equal :: Constant -> Constant -> Constant
-equal x y = if x == y then IntConst 1 else IntConst 0
+equal x y = if x == y then IntC 1 else IntC 0
 
 dropWhileOp :: Constant -> Constant -> Constant
-dropWhileOp a (List b) = List $ dropWhile (/= a) b
+dropWhileOp a (ListC b) = ListC $ dropWhile (/= a) b
 
 dropOp :: Constant -> Constant -> Constant
-dropOp (IntConst a) (List b) = List $ drop a b
+dropOp (IntC a) (ListC b) = ListC $ drop a b
 
 plus :: Constant -> Constant -> Constant
-plus (IntConst intLeft) (IntConst intRight) = IntConst $ intLeft + intRight
-plus (List listLeft) (List listRight) = List $ listLeft ++ listRight
-plus const (List listRight) = List $ const : listRight
-plus (StrConst strLeft) (StrConst strRight) = StrConst $ strLeft ++ strRight
+plus (IntC intLeft) (IntC intRight) = IntC $ intLeft + intRight
+plus (ListC listLeft) (ListC listRight) = ListC $ listLeft ++ listRight
+plus const (ListC listRight) = ListC $ const : listRight
+plus (StrC strLeft) (StrC strRight) = StrC $ strLeft ++ strRight
 
 headOp :: Constant -> Constant
-headOp (List (a : aTail)) = a
+headOp (ListC (a : aTail)) = a
 headOp _ = undefined
 
 tailOp :: Constant -> Constant
-tailOp (List (a : aTail)) = List aTail
-tailOp (StrConst (a : aTail)) = StrConst aTail
+tailOp (ListC (a : aTail)) = ListC aTail
+tailOp (StrC (a : aTail)) = StrC aTail
 
 unionOp :: Constant -> Constant -> Constant
-unionOp (List leftList) (List rightList) = List (nub (leftList ++ rightList))
+unionOp (ListC leftList) (ListC rightList) = ListC (nub (leftList ++ rightList))
 unionOp _ _ = undefined
-
-lookupOp :: Constant -> Constant -> Constant
-lookupOp (ProgramC program) (StrConst label)= undefined
 
 eval ::  Program -> VarMap -> IO (Either Error Constant)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))
+
+lookupOp :: Constant -> Constant -> Constant
+lookupOp (ProgramC (Program _ basicBlocks)) (StrC label)=
+    let labeledBlock = find (\(BasicBlock l _ _) -> l == Label label) basicBlocks
+    in
+    case labeledBlock of
+        Just block -> blockToCommandsList block
+        Nothing -> error $ "Block with label: " ++ label ++ " not found."
+
+-- First element in list will be indentificator: assigment, goto, if, return
+blockToCommandsList :: BasicBlock -> Constant
+blockToCommandsList (BasicBlock label assigments jump) =
+    let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
+        jumpElement = jumpToCommand jump
+    in if jumpElement == []
+       then ListC assigmentList
+       else ListC $ assigmentList ++ [ListC jumpElement]
+
+
+jumpToCommand :: Jump -> [Constant]
+jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
+jumpToCommand (If expr1 (Label ifTrueLabel) (Label ifFalseLabel)) = [StrC "if", ExprC expr1, StrC ifTrueLabel, StrC ifFalseLabel]
+jumpToCommand (Return expr) = [StrC "return", ExprC expr]
+jumpToCommand EmptyJump = []

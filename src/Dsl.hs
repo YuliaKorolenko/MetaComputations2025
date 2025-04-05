@@ -16,7 +16,7 @@ program :: [String] -> [BasicBlock] -> Program
 program vars = Program (map VarName vars)
 
 v :: String -> Expr
-v name = Var $ VarName name
+v name = EVar $ VarName name
 
 -- Assigment
 infixl 5 #=
@@ -27,9 +27,9 @@ varName #= expr = Assigment (VarName varName) (toExprEqual expr)
 
 toExprEqual :: forall a. (Typeable a) => a -> Expr
 toExprEqual expr
-  | Just x <- cast expr = Constant (IntConst x)
-  | Just x <- cast expr = Constant x
-  | Just x <- cast expr = Var (VarName x)
+  | Just x <- cast expr = EVar (VarName x)
+  | Just x <- cast expr = EConstant (IntC x)
+  | Just x <- cast expr = EConstant x
   | Just x <- cast expr = x
   | otherwise           = error "Unsupported type"
 
@@ -37,15 +37,11 @@ infixl 5 ?=
 
 -- isequal
 (?=) :: (Typeable a, Typeable b) => a -> b -> Expr
-varExpr ?= expr = BinOP Equal (toExprIsEqual varExpr) (toExprIsEqual expr)
+varExpr ?= expr = EBinOP Equal (toExprEqual varExpr) (toExprEqual expr)
 
-toExprIsEqual :: forall a. (Typeable a) => a -> Expr
-toExprIsEqual expr
-  | Just x <- cast expr = Constant (IntConst x)
-  | Just x <- cast expr = Var (VarName x)
-  | Just x <- cast expr = Constant x
-  | Just x <- cast expr = x
-  | otherwise           = error "Unsupported type"
+-- Return
+returnCnst :: String -> Jump
+returnCnst str = Return (EVar $ VarName str)
 
 -- Block
 
@@ -67,41 +63,36 @@ bl labelName assigments = BasicBlock (Label labelName) assigments EmptyJump
 block :: [Assigment] -> BasicBlock
 block assigments = BasicBlock EmptyLabel assigments EmptyJump
 
-
--- Return
-returnCnst :: String -> Jump
-returnCnst str = Return (Var (VarName str))
-
 -- Lists
 lInt :: [Int] -> Constant
-lInt elems = List (map IntConst elems)
+lInt elems = ListC (map IntC elems)
 
 lStr :: [String] -> Constant
-lStr elems = List (map StrConst elems)
+lStr elems = ListC (map StrC elems)
 
 hd :: Expr -> Expr
-hd = UnOp Hd
+hd = EUnOp Hd
 
 tl :: Expr -> Expr
-tl = UnOp Tl
+tl = EUnOp Tl
 
 cons :: Constant -> Expr -> Expr
-cons cnst = pl (Constant $ List [cnst])
+cons cnst = pl (EConstant $ ListC [cnst])
 
 drpWhile :: Expr -> Expr -> Expr
-drpWhile = BinOP DropWhile
+drpWhile = EBinOP DropWhile
 
 drp :: Expr -> Expr -> Expr
-drp = BinOP Drop
+drp = EBinOP Drop
 
 lookup' :: Expr -> Expr -> Expr
-lookup' = BinOP Lookup
+lookup' = EBinOP Lookup
 
 pl :: Expr -> Expr -> Expr
-pl = BinOP Plus
+pl = EBinOP Plus
 
 u :: Expr -> Expr -> Expr
-u = BinOP Union
+u = EBinOP Union
 
 -- Jump
 if' :: Expr -> String -> String -> Jump
@@ -113,7 +104,7 @@ goto label = Goto $ Label label
 -- Constant
 
 s :: String -> Constant
-s = StrConst
+s = StrC
 
 pair :: Constant -> String -> Constant
-pair const1 varName = List [const1, Expr $ v varName]
+pair const1 varName = ListC [const1, ExprC $ v varName]

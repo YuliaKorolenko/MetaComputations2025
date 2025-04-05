@@ -37,23 +37,23 @@ spec :: Spec
 spec = do
   describe "Test Program for Var" $ do
     it "correctly evaluates the value of 'x' in testProgramVar" $ do
-      result <- eval testProgramVar (M.fromList [("x", IntConst 150), ("y", IntConst 22), ("c", IntConst 3)])
+      result <- eval testProgramVar (M.fromList [("x", IntC 150), ("y", IntC 22), ("c", IntC 3)])
       case result of
         Left err -> putStrLn $ "Error: " ++ show err
-        Right value -> value `shouldBe` IntConst 150
+        Right value -> value `shouldBe` IntC 150
   describe "Test program return x" $ do
     it "correctly evaluates the return value of 'x' in testProgramX" $ do
       result <- eval testProgramXY M.empty
       case result of
           Left err -> putStrLn $ "Error: " ++ show err
-          Right value -> value `shouldBe` IntConst 4
+          Right value -> value `shouldBe` IntC 4
   describe "Test program for conditional evaluation of 'a' and 'b'" $ do
     it "correctly evaluates the return value of 'x' in testProgramX" $ do
       let a = 55
       let b = 45
-      result <- eval maxProgram (M.fromList [("a", IntConst a), ("b", IntConst b)])
+      result <- eval maxProgram (M.fromList [("a", IntC a), ("b", IntC b)])
       case result of
           Left err -> putStrLn $ "Error: " ++ show err
           Right value -> do
             let expected = if a + b == 1 then 100 else a + b
-            value `shouldBe` IntConst expected
+            value `shouldBe` IntC expected

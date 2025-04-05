@@ -32,18 +32,18 @@ data BinOp = Plus |
 data UnOp = Hd |
             Tl deriving (Show, Eq)
 
-data Constant = IntConst Int | 
-                List [Constant] | 
-                StrConst String |  
-                Expr Expr |
+data Expr = EConstant Constant |
+            EVar VarName |
+            EBinOP BinOp Expr Expr |
+            EUnOp UnOp Expr 
+                deriving (Show, Typeable, Eq)
+
+data Constant = IntC Int | 
+                ListC [Constant] | 
+                StrC String |  
+                ExprC Expr |
                 ProgramC Program
                     deriving (Show, Eq)
-
-data Expr = Constant Constant |
-            Var VarName |
-            BinOP BinOp Expr Expr |
-            UnOp UnOp Expr 
-                deriving (Show, Typeable, Eq)
 
 data Label = Label String | 
              EmptyLabel 

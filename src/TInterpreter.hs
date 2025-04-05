@@ -6,8 +6,8 @@ import Ast
 turingInterpreter :: Program
 turingInterpreter = program ["Q", "Right"]
                     [
-                        bl  "init"  ["QTail" #= "Q", "Left" #= List []],   -- init: QTail := Q; Left := '();
-                        blj "loop"  (if' (v "QTail" ?= List []) "stop" "cont"),                   -- "loop: if QTail = '() goto stop else cont;"
+                        bl  "init"  ["QTail" #= "Q", "Left" #= ListC []],   -- init: QTail := Q; Left := '();
+                        blj "loop"  (if' (v "QTail" ?= ListC []) "stop" "cont"),                   -- "loop: if QTail = '() goto stop else cont;"
                         blj "stop"  (returnCnst "Right"),                                                -- stop : return right;
                         bl  "cont"  ["Instruction" #= hd (v "QTail"),               -- cont : Instruction := First_instruction(QTail);
                                      "QTail"       #= tl (v "QTail"),                      -- QTail := rest(Qtail);
@@ -41,7 +41,7 @@ turingInterpreter = program ["Q", "Right"]
                         blja "jump" ["QTail" #= drp (v "NextLabel") (v "Q")]  -- "QTail" := newTail(Nextlabel, Q);
                              (goto "loop"),
 
-                        blj "error" (Return (pl (Constant $ StrConst "Sytax error: ") (v "Instruction"))) ,
+                        blj "error" (Return (pl (EConstant $ s "Sytax error: ") (v "Instruction"))) ,
 
                         blj "stop" (Return (v "Right"))
                     ]

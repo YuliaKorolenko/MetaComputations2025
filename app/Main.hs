@@ -9,17 +9,17 @@ import TInterpreter(turingInterpreter)
 import Control.Applicative (Alternative(empty))
 import Division
 import System.IO (print)
-import Dsl (program, block)
+import Dsl (program, block, returnCnst)
 import Division (generateStaticVars)
 import Ast 
 
 testProgramXY = program ["k"]
               [block ["x" #= (4 :: Int)],
-               block ["f" #= "k"],
+               bl "h" [],
                bja ["y" #= (6 :: Int)] $ returnCnst "x"]
 
 
 main :: IO ()
 main = do
-    let res = generateStaticVars turingInterpreter [VarName "Right"]
-    print res
+    let result = lookupOp (ProgramC testProgramXY) (s "h")
+    print result

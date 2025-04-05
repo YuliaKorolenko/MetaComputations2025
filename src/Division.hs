@@ -39,7 +39,7 @@ exAssigment (Assigment var expr : tailAssigm) dynamicVars = do
 exAssigment [] dynamicVars = dynamicVars
 
 expVarNames :: Expr -> [VarName]
-expVarNames (Constant _ ) = []
-expVarNames (Var v) = [v]
-expVarNames (BinOP _ expr1 expr2) = expVarNames expr2 ++ expVarNames expr1
-expVarNames (UnOp _ expr) = expVarNames expr
+expVarNames (EConstant _ ) = []
+expVarNames (EVar v) = [v]
+expVarNames (EBinOP _ expr1 expr2) = expVarNames expr2 ++ expVarNames expr1
+expVarNames (EUnOp _ expr) = expVarNames expr
