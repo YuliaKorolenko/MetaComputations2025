@@ -21,14 +21,14 @@ testProgramXY = Program []
 maxProgram :: Program
 maxProgram = program ["a", "b"]
  [
-    bj (IF (BinOP PLUS (VAR (VarName "a")) (VAR (VarName "b"))) (Label "oneHundred") (Label "plus")),
+    bj (if' (pl (v "a") (v "b")) "oneHundred" "plus"),
 
     BasicBlock (Label "oneHundred")
       ["result" #= (100 :: Int)]
       (returnCnst "result"),
 
     BasicBlock (Label "plus")
-      ["res" #= BinOP PLUS (VAR (VarName "a")) (VAR (VarName "b"))]
+      ["res" #= pl (v "a") (v "b")]
       (returnCnst "res")
   ]
 

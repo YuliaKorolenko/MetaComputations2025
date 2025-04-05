@@ -4,34 +4,47 @@ module Ast where
 import Data.Typeable (Typeable, cast)
 
 
-data Program = Program [VarName] [BasicBlock]
+data Program = Program [VarName] [BasicBlock] 
+    deriving (Show, Eq)
 
 data BasicBlock = BasicBlock Label [Assigment] Jump 
-    deriving (Show)
+    deriving (Show, Eq)
 
 data Jump 
-    = GOTO Label 
-    | IF Expr Label Label 
-    | RETURN Expr 
-    | EMPTYJUMP
-    deriving (Show)
+    = Goto Label 
+    | If Expr Label Label 
+    | Return Expr 
+    | EmptyJump
+    deriving (Show, Eq)
 
 newtype VarName = VarName String deriving (Show, Eq, Ord)
 
-data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show)
+data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show, Eq)
 
-data BinOp = PLUS | EQUAL | DROPWHILE | DROP deriving Show 
+data BinOp = Plus |
+             Equal | 
+             DropWhile | 
+             Drop | 
+             Union |
+             Lookup
+                deriving (Show, Eq)
 
 data UnOp = Hd |
-            Tl deriving Show
+            Tl deriving (Show, Eq)
 
-data Constant = IntConst Int | List [Constant] | StrConst String deriving (Show, Eq)
+data Constant = IntConst Int | 
+                List [Constant] | 
+                StrConst String |  
+                Expr Expr |
+                ProgramC Program
+                    deriving (Show, Eq)
 
-data Expr 
-    = Constant Constant |
-    VAR VarName |
-    BinOP BinOp Expr Expr |
-    UnOp UnOp Expr 
-    deriving (Show, Typeable)
+data Expr = Constant Constant |
+            Var VarName |
+            BinOP BinOp Expr Expr |
+            UnOp UnOp Expr 
+                deriving (Show, Typeable, Eq)
 
-data Label = Label String | EmptyLabel deriving (Show)
+data Label = Label String | 
+             EmptyLabel 
+                deriving (Show, Eq)

@@ -6,9 +6,11 @@ import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Debug.Trace (traceM, trace)
 import qualified Data.Map.Strict as M
+import Data.List(nub)
 
 import Ast
 import Data.Type.Equality (TestEquality)
+import Dsl (program)
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
@@ -52,18 +54,18 @@ handleLabel (Label labelName) _ = do
         Nothing -> lift $ throwE $ UnexpectedElement ("Expected a label named '" ++ labelName ++ "', but it was not found in the LabelMap.")
 
 handleJumpBlock :: BasicBlock -> EvalM Constant
-handleJumpBlock (BasicBlock _ _ instr@(GOTO goLabel)) = handleLabel goLabel instr
-handleJumpBlock (BasicBlock _ _ instr@(IF curExpr trueLabel falseLabel)) = do
+handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) = handleLabel goLabel instr
+handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     val <- evalExpr curExpr
     -- traceM ("IF block: " ++ show val ++ " truelabel: " ++ show trueLabel ++ "false Label: " ++ show falseLabel)
     case val of
         IntConst 1 -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
-handleJumpBlock (BasicBlock _ _ (RETURN curExpr)) = evalExpr curExpr
+handleJumpBlock (BasicBlock _ _ (Return curExpr)) = evalExpr curExpr
 handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
 
 evalBasicBlocks :: [BasicBlock] -> EvalM Constant
-evalBasicBlocks (BasicBlock _ assigments EMPTYJUMP : tailBlocks) = do
+evalBasicBlocks (BasicBlock _ assigments EmptyJump : tailBlocks) = do
     -- traceM "evalBasicBlocks empty jump"
     evalAssigments assigments
     evalBasicBlocks tailBlocks
@@ -85,7 +87,7 @@ evalAssigments [] = return ()
 
 evalExpr :: Expr -> EvalM Constant
 evalExpr (Constant constant) = return constant
-evalExpr (VAR (VarName varName)) = do
+evalExpr (Var (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
         Just element -> return element
@@ -95,10 +97,12 @@ evalExpr (BinOP op expr1 expr2) = do
     rightEl <- evalExpr expr2
     -- traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl)
     case op of
-        PLUS -> return $ plus leftEl rightEl
-        EQUAL -> return $ equal leftEl rightEl
-        DROPWHILE -> return $ dropWhileOp leftEl rightEl
-        DROP -> return $ dropOp leftEl rightEl
+        Plus -> return $ plus leftEl rightEl
+        Equal -> return $ equal leftEl rightEl
+        DropWhile -> return $ dropWhileOp leftEl rightEl
+        Drop -> return $ dropOp leftEl rightEl
+        Union -> return $ unionOp leftEl rightEl
+        Lookup -> return $ lookupOp leftEl rightEl
 evalExpr (UnOp op expr) = do
     res <- evalExpr expr
     case op of
@@ -127,6 +131,13 @@ headOp _ = undefined
 tailOp :: Constant -> Constant
 tailOp (List (a : aTail)) = List aTail
 tailOp (StrConst (a : aTail)) = StrConst aTail
+
+unionOp :: Constant -> Constant -> Constant
+unionOp (List leftList) (List rightList) = List (nub (leftList ++ rightList))
+unionOp _ _ = undefined
+
+lookupOp :: Constant -> Constant -> Constant
+lookupOp (ProgramC program) (StrConst label)= undefined
 
 eval ::  Program -> VarMap -> IO (Either Error Constant)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))

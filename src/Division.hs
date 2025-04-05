@@ -40,6 +40,6 @@ exAssigment [] dynamicVars = dynamicVars
 
 expVarNames :: Expr -> [VarName]
 expVarNames (Constant _ ) = []
-expVarNames (VAR v) = [v]
+expVarNames (Var v) = [v]
 expVarNames (BinOP _ expr1 expr2) = expVarNames expr2 ++ expVarNames expr1
 expVarNames (UnOp _ expr) = expVarNames expr

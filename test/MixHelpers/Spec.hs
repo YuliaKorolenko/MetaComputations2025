@@ -1,4 +1,4 @@
-module Division.Spec where
+module MixHelpers.Spec where
 
 import Test.Hspec
 import Data.List (sort)
@@ -31,4 +31,8 @@ specDivision = do
         it "correctly generate static variables" $ do
             let result = generateStaticVars testABC [VarName "a", VarName "b"]
             sort result `shouldBe` (sort [VarName "b"])
+
+
+specLookup :: Spec
+specLookup = undefined
 
