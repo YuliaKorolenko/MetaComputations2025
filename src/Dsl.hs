@@ -70,6 +70,8 @@ lInt elems = ListC (map IntC elems)
 lStr :: [String] -> Constant
 lStr elems = ListC (map StrC elems)
 
+-- Operations
+
 hd :: Expr -> Expr
 hd = EUnOp Hd
 
@@ -93,6 +95,9 @@ pl = EBinOP Plus
 
 u :: Expr -> Expr -> Expr
 u = EBinOP Union
+
+elem' :: Expr -> Expr -> Expr
+elem' = EBinOP Elem
 
 -- Jump
 if' :: Expr -> String -> String -> Jump

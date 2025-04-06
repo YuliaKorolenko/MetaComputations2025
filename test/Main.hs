@@ -11,3 +11,4 @@ main = do
     hspec specTM
     hspec specDivision
     hspec specLookup
+    hspec specElem

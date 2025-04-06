@@ -14,8 +14,10 @@ allProgramVars (Program varnames blocks) = nub $ varnames ++ concatMap genBlockV
         genBlockVars (BasicBlock _ assignments _) =
             map (\(Assigment varname _) -> varname) assignments
 
-generateStaticVars :: Program -> [VarName] -> [VarName]
-generateStaticVars prog@(Program varnames blocks) staticVars = allProgramVars prog \\ iterateDynamicVars blocks (varnames \\ staticVars)
+generateStaticVars :: Program -> [VarName] -> Constant
+generateStaticVars prog@(Program varnames blocks) staticVars = let
+    staticVN = allProgramVars prog \\ iterateDynamicVars blocks (varnames \\ staticVars)
+    in ListC $ map (ExprC . EVar) staticVN
 
 iterateDynamicVars :: [BasicBlock] -> [VarName] -> [VarName]
 iterateDynamicVars blocks dinamicVars =

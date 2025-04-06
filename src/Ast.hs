@@ -26,7 +26,8 @@ data BinOp = Plus |
              DropWhile | 
              Drop | 
              Union |
-             Lookup
+             Lookup |
+             Elem
                 deriving (Show, Eq)
 
 data UnOp = Hd |
@@ -42,7 +43,8 @@ data Constant = IntC Int |
                 ListC [Constant] | 
                 StrC String |  
                 ExprC Expr |
-                ProgramC Program
+                ProgramC Program |
+                BoolC Bool
                     deriving (Show, Eq)
 
 data Label = Label String | 

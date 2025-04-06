@@ -5,13 +5,10 @@ import qualified Data.Map.Strict as M
 import Ast
 import Interpret
 import Dsl
-import TInterpreter(turingInterpreter)
-import Control.Applicative (Alternative(empty))
+import TInterpreter
 import Division
-import System.IO (print)
-import Dsl (program, block, returnCnst)
-import Division (generateStaticVars)
-import Ast 
+import System.IO 
+import Prelude
 
 testProgramXY = program ["k"]
               [block ["x" #= (4 :: Int)],

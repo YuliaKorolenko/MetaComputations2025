@@ -60,6 +60,7 @@ handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     -- traceM ("IF block: " ++ show val ++ " truelabel: " ++ show trueLabel ++ "false Label: " ++ show falseLabel)
     case val of
         IntC 1 -> handleLabel trueLabel instr
+        BoolC true -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
 handleJumpBlock (BasicBlock _ _ (Return curExpr)) = evalExpr curExpr
 handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
@@ -103,6 +104,7 @@ evalExpr (EBinOP op expr1 expr2) = do
         Drop -> return $ dropOp leftEl rightEl
         Union -> return $ unionOp leftEl rightEl
         Lookup -> return $ lookupOp leftEl rightEl
+        Elem -> return $ elemOp leftEl rightEl
 evalExpr (EUnOp op expr) = do
     res <- evalExpr expr
     case op of
@@ -152,7 +154,7 @@ blockToCommandsList :: BasicBlock -> Constant
 blockToCommandsList (BasicBlock label assigments jump) =
     let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
         jumpElement = jumpToCommand jump
-    in if jumpElement == []
+    in if null jumpElement
        then ListC assigmentList
        else ListC $ assigmentList ++ [ListC jumpElement]
 
@@ -162,3 +164,9 @@ jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
 jumpToCommand (If expr1 (Label ifTrueLabel) (Label ifFalseLabel)) = [StrC "if", ExprC expr1, StrC ifTrueLabel, StrC ifFalseLabel]
 jumpToCommand (Return expr) = [StrC "return", ExprC expr]
 jumpToCommand EmptyJump = []
+
+elemOp :: Constant -> Constant -> Constant
+elemOp findEl (ListC (curEl : tail)) = if findEl == curEl
+                                       then BoolC True
+                                       else elemOp findEl (ListC tail)
+elemOp findEl (ListC []) = BoolC False
