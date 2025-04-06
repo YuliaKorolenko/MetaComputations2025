@@ -21,7 +21,6 @@ plus (IntC intLeft) (IntC intRight) = IntC $ intLeft + intRight
 plus (ListC listLeft) (ListC listRight) = ListC $ listLeft ++ listRight
 plus const (ListC listRight) = ListC $ const : listRight
 plus (StrC strLeft) (StrC strRight) = StrC $ strLeft ++ strRight
-plus (ListC l1) (ListC l2) = undefined
 
 headOp :: Constant -> Constant
 headOp (ListC (a : aTail)) = a
