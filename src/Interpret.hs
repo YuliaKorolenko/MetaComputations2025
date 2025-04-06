@@ -5,12 +5,14 @@ import Control.Monad.State (StateT, put, MonadState(get), MonadTrans(lift), eval
 import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class (liftIO)
 import Debug.Trace (traceM, trace)
-import qualified Data.Map.Strict as M
 import Data.List(nub, find)
+import qualified Data.Map.Strict as M
+import System.IO.Unsafe (unsafePerformIO)
 
 import Ast
 import Data.Type.Equality (TestEquality)
 import Dsl (program)
+import InterpretOp
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
@@ -87,86 +89,96 @@ evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
 evalAssigments [] = return ()
 
 evalExpr :: Expr -> EvalM Constant
-evalExpr (EConstant constant) = return constant
-evalExpr (EVar (VarName varName)) = do
-    (currentVarMap, _) <- get
-    case M.lookup varName currentVarMap of
-        Just element -> return element
-        Nothing -> lift $ throwE $ VariableNotFound varName
-evalExpr (EBinOP op expr1 expr2) = do
-    leftEl <- evalExpr expr1
-    rightEl <- evalExpr expr2
-    -- traceM ("Current bin operation: " ++ show op ++ " " ++ show leftEl ++ "  " ++ show rightEl)
-    case op of
-        Plus -> return $ plus leftEl rightEl
-        Equal -> return $ equal leftEl rightEl
-        DropWhile -> return $ dropWhileOp leftEl rightEl
-        Drop -> return $ dropOp leftEl rightEl
-        Union -> return $ unionOp leftEl rightEl
-        Lookup -> return $ lookupOp leftEl rightEl
-        Elem -> return $ elemOp leftEl rightEl
-evalExpr (EUnOp op expr) = do
-    res <- evalExpr expr
-    case op of
-        Hd -> return $ headOp res
-        Tl -> return $ tailOp res
+evalExpr expr = do
+    reducedExpr <- reduceExpr expr  
+    case reducedExpr of
+        EConstant c -> return c  
+        _           -> error "Evaluation failed: Expression did not reduce to a constant."
 
-equal :: Constant -> Constant -> Constant
-equal x y = if x == y then IntC 1 else IntC 0
-
-dropWhileOp :: Constant -> Constant -> Constant
-dropWhileOp a (ListC b) = ListC $ dropWhile (/= a) b
-
-dropOp :: Constant -> Constant -> Constant
-dropOp (IntC a) (ListC b) = ListC $ drop a b
-
-plus :: Constant -> Constant -> Constant
-plus (IntC intLeft) (IntC intRight) = IntC $ intLeft + intRight
-plus (ListC listLeft) (ListC listRight) = ListC $ listLeft ++ listRight
-plus const (ListC listRight) = ListC $ const : listRight
-plus (StrC strLeft) (StrC strRight) = StrC $ strLeft ++ strRight
-
-headOp :: Constant -> Constant
-headOp (ListC (a : aTail)) = a
-headOp _ = undefined
-
-tailOp :: Constant -> Constant
-tailOp (ListC (a : aTail)) = ListC aTail
-tailOp (StrC (a : aTail)) = StrC aTail
-
-unionOp :: Constant -> Constant -> Constant
-unionOp (ListC leftList) (ListC rightList) = ListC (nub (leftList ++ rightList))
-unionOp _ _ = undefined
 
 eval ::  Program -> VarMap -> IO (Either Error Constant)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))
 
-lookupOp :: Constant -> Constant -> Constant
-lookupOp (ProgramC (Program _ basicBlocks)) (StrC label)=
-    let labeledBlock = find (\(BasicBlock l _ _) -> l == Label label) basicBlocks
-    in
-    case labeledBlock of
-        Just block -> blockToCommandsList block
-        Nothing -> error $ "Block with label: " ++ label ++ " not found."
+evalProgram :: Program -> [Expr] -> Program
+evalProgram = undefined
 
--- First element in list will be indentificator: assigment, goto, if, return
-blockToCommandsList :: BasicBlock -> Constant
-blockToCommandsList (BasicBlock label assigments jump) =
-    let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
-        jumpElement = jumpToCommand jump
-    in if null jumpElement
-       then ListC assigmentList
-       else ListC $ assigmentList ++ [ListC jumpElement]
+reduceExpr :: Expr -> EvalM Expr
+reduceExpr (EConstant constant) = return $ EConstant constant
+reduceExpr v@(EVar (VarName varName)) = do
+    (currentVarMap, _) <- get
+    case M.lookup varName currentVarMap of
+        Just element -> return $ EConstant element
+        Nothing -> return v
+reduceExpr (EBinOP op expr1 expr2) = do
+    leftEl <- reduceExpr expr1
+    rightEl <- reduceExpr expr2
+    case op of 
+        Reduce -> return$ reduceOp leftEl expr2
+        _ -> applyBinOp leftEl rightEl op
+reduceExpr (EUnOp op expr) = do
+    res <- reduceExpr expr
+    applyUnOp res op
+reduceExpr (ETernOp op exp1 exp2 exp3) = do
+    firstEl <- reduceExpr exp1
+    secEl <- reduceExpr exp2
+    thirdEl <- reduceExpr exp3
+    applyTernOp firstEl secEl thirdEl op
+    
+getUnOpFunc :: UnOp -> (Constant -> Constant)
+getUnOpFunc op = case op of
+    Hd -> headOp
+    Tl -> tailOp
+
+getBinOpFunc :: BinOp -> (Constant -> Constant -> Constant)
+getBinOpFunc op = case op of
+    Plus      -> plus
+    Equal     -> equal
+    DropWhile -> dropWhileOp
+    Drop      -> dropOp
+    Union     -> unionOp
+    Lookup    -> lookupOp
+    Elem      -> elemOp
+    Eval      -> evalOp
+    Cons      -> consOp
+
+getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
+getTernOpFunc op = case op of
+    Insert -> insertOp
 
 
-jumpToCommand :: Jump -> [Constant]
-jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
-jumpToCommand (If expr1 (Label ifTrueLabel) (Label ifFalseLabel)) = [StrC "if", ExprC expr1, StrC ifTrueLabel, StrC ifFalseLabel]
-jumpToCommand (Return expr) = [StrC "return", ExprC expr]
-jumpToCommand EmptyJump = []
+applyUnOp :: Expr -> UnOp -> EvalM Expr
+applyUnOp expr1 op = do
+    case expr1 of
+        (EConstant c1) -> return $ EConstant (getUnOpFunc op c1)
+        _                            -> return $ EUnOp op expr1
 
-elemOp :: Constant -> Constant -> Constant
-elemOp findEl (ListC (curEl : tail)) = if findEl == curEl
-                                       then BoolC True
-                                       else elemOp findEl (ListC tail)
-elemOp findEl (ListC []) = BoolC False
+
+applyBinOp :: Expr -> Expr -> BinOp  -> EvalM Expr
+applyBinOp expr1 expr2 op = do
+    case (expr1, expr2) of
+        (EConstant c1, EConstant c2) -> return $ EConstant (getBinOpFunc op c1 c2)
+        _                            -> return $ EBinOP op expr1 expr2
+
+
+applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
+applyTernOp expr1 expr2 expr3 op = do
+    case (expr1, expr2, expr3) of
+        (EConstant c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op c1 c2 c3)
+        _                                           -> return $ ETernOp op expr1 expr2 expr3
+
+
+reduceOp :: Expr -> Expr -> Expr
+reduceOp expr (EConstant (ListC constants)) = do
+    let result = unsafePerformIO $ runExceptT $ evalStateT (reduceExpr expr) (varListToMap constants, M.empty)
+    case result of
+        Left e -> undefined
+        Right value -> value
+
+evalOp :: Constant -> Constant -> Constant
+evalOp (ExprC expr) (ListC constants) = do
+    let result = unsafePerformIO $ runExceptT $ evalStateT (evalExpr expr) (varListToMap constants, M.empty)
+    case result of
+        Left e -> undefined
+        Right value -> value
+
+        

@@ -27,16 +27,22 @@ data BinOp = Plus |
              Drop | 
              Union |
              Lookup |
-             Elem
+             Elem |
+             Eval |
+             Reduce |
+             Cons
                 deriving (Show, Eq)
 
 data UnOp = Hd |
             Tl deriving (Show, Eq)
 
+data TernOp = Insert deriving (Show, Eq)
+
 data Expr = EConstant Constant |
             EVar VarName |
             EBinOP BinOp Expr Expr |
-            EUnOp UnOp Expr 
+            EUnOp UnOp Expr |
+            ETernOp TernOp Expr Expr Expr
                 deriving (Show, Typeable, Eq)
 
 data Constant = IntC Int | 

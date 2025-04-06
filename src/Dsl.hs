@@ -31,6 +31,7 @@ toExprEqual expr
   | Just x <- cast expr = EConstant (IntC x)
   | Just x <- cast expr = EConstant x
   | Just x <- cast expr = x
+  | Just x <- cast expr = EConstant (BoolC x)
   | otherwise           = error "Unsupported type"
 
 infixl 5 ?=
@@ -70,6 +71,13 @@ lInt elems = ListC (map IntC elems)
 lStr :: [String] -> Constant
 lStr elems = ListC (map StrC elems)
 
+lConst :: [Expr] -> Expr
+lConst exprs = EConstant $ ListC $ map exprToConstant exprs
+
+exprToConstant :: Expr -> Constant
+exprToConstant (EConstant c) = c
+exprToConstant expr = ExprC expr
+
 -- Operations
 
 hd :: Expr -> Expr
@@ -81,6 +89,9 @@ tl = EUnOp Tl
 cons :: Constant -> Expr -> Expr
 cons cnst = pl (EConstant $ ListC [cnst])
 
+cons' :: Expr -> Expr -> Expr
+cons' = EBinOP Cons
+
 drpWhile :: Expr -> Expr -> Expr
 drpWhile = EBinOP DropWhile
 
@@ -89,6 +100,15 @@ drp = EBinOP Drop
 
 lookup' :: Expr -> Expr -> Expr
 lookup' = EBinOP Lookup
+
+eval' :: Expr -> Expr -> Expr
+eval' = EBinOP Eval
+
+insert' :: Expr -> Expr -> Expr -> Expr
+insert' = ETernOp Insert
+
+reduce' :: Expr -> Expr -> Expr
+reduce' = EBinOP Reduce
 
 pl :: Expr -> Expr -> Expr
 pl = EBinOP Plus

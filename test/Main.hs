@@ -12,3 +12,5 @@ main = do
     hspec specDivision
     hspec specLookup
     hspec specElem
+    hspec specInsert
+    hspec specReduce

@@ -3,7 +3,8 @@ module MixHelpers.Spec where
 import Test.Hspec
 import Data.List (sort)
 
-import Interpret(lookupOp, headOp, tailOp, elemOp)
+import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp)
+import Interpret(reduceOp)
 import Division
 import Dsl
 import Ast
@@ -15,9 +16,16 @@ testProgramXY = program ["k", "n"]
             blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x",
             block ["f" #= "n"]]
 
+xyStatic :: Constant
+xyStatic = ListC [ListC [ExprC $ EVar $ VarName "k", IntC 1]]
+
 testABC = program ["a", "b", "c"]
             [blja "l1" ["d" #= pl (v "a") (v "b")] (if' (EConstant $ IntC 1) "l2" "l1"),
              blja "l2" ["a" #= v "c"] (if' (EConstant $ IntC 1) "l1" "l2")]
+
+abStatic :: Constant
+abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", IntC 1],
+                  ListC [ExprC $ EVar $ VarName "b", IntC 2]]
 
 resultToVarNames :: Constant -> [VarName]
 resultToVarNames (ListC arr) = sort $ map (\(ExprC (EVar varname)) -> varname) arr
@@ -30,11 +38,11 @@ specDivision = do
             sort result `shouldBe` sort [VarName "x", VarName "y", VarName "k", VarName "f", VarName "n", VarName "l"]
     describe "Test Program testProgramXY" $ do
         it "correctly generate static variables" $ do
-            let result = generateStaticVars testProgramXY [VarName "k"]
+            let result = generateStaticVars testProgramXY xyStatic
             resultToVarNames result `shouldBe` sort [VarName "x", VarName "y", VarName "k"]
     describe "Test Program testProgramXY" $ do
         it "correctly generate static variables" $ do
-            let result = generateStaticVars testABC [VarName "a", VarName "b"]
+            let result = generateStaticVars testABC abStatic
             resultToVarNames result `shouldBe` sort [VarName "b"]
 
 
@@ -59,12 +67,18 @@ specLookup = do
         it "correctly create list of command in basicBlock" $ do
             let result = lookupOp (ProgramC testProgramXY) (s "check")
             result `shouldBe` answer2
+    describe "Test lookup on variable and var storage" $ do
+        it "correctly find variable in storage" $ do
+            let varnameToFind = ExprC (EVar (VarName "a"))
+            let env = abStatic
+            let result = lookupOp env varnameToFind
+            result `shouldBe` IntC 1
 
 specElem :: Spec
 specElem = do
     describe "Test elem on testABC" $ do
         it "correctly not find element in static variables" $ do
-            let staticVariables = generateStaticVars testABC [VarName "a", VarName "b"]
+            let staticVariables = generateStaticVars testABC abStatic
             let bb = lookupOp (ProgramC testABC) (s "l1")
             let command = headOp bb
             let x = headOp $ tailOp command
@@ -72,9 +86,59 @@ specElem = do
             trueFalse `shouldBe` BoolC False
     describe "Test elem on testProgramXY" $ do
         it "correctly find element in static variables" $ do
-            let staticVariables = generateStaticVars testProgramXY [VarName "k"]
+            let staticVariables = generateStaticVars testProgramXY xyStatic
             let bb = lookupOp (ProgramC testProgramXY) (s "check")
             let command = headOp bb
             let x = headOp $ tailOp command
             let trueFalse = elemOp x staticVariables
             trueFalse `shouldBe` BoolC True
+
+specInsert :: Spec
+specInsert = do
+    describe "Test insertOp" $ do
+        it "correctly inserts a new element" $ do
+            let varnames = ListC [
+                    ListC [ExprC (EVar (VarName "a")), IntC 1],
+                    ListC [ExprC (EVar (VarName "b")), IntC 2]
+                  ]
+            let varToFind = ExprC (EVar (VarName "c"))  
+            let res = IntC 3  
+            let updatedList = insertOp varToFind res varnames
+            let expectedList = ListC [
+                    ListC [ExprC (EVar (VarName "a")), IntC 1],
+                    ListC [ExprC (EVar (VarName "b")), IntC 2],
+                    ListC [ExprC (EVar (VarName "c")), IntC 3] 
+                  ]
+            updatedList `shouldBe` expectedList
+
+        it "correctly replaces an existing element" $ do
+            let varnames = ListC [
+                    ListC [ExprC (EVar (VarName "a")), IntC 1],
+                    ListC [ExprC (EVar (VarName "b")), IntC 2]
+                  ]
+            let varToFind = ExprC (EVar (VarName "b"))  
+            let res = IntC 3 
+            let updatedList = insertOp varToFind res varnames
+            let expectedList = ListC [
+                    ListC [ExprC (EVar (VarName "a")), IntC 1],
+                    ListC [ExprC (EVar (VarName "b")), IntC 3]  
+                  ]
+            updatedList `shouldBe` expectedList
+
+
+specReduce :: Spec
+specReduce = do
+    describe "Test reduce' function" $ do
+        it "correctly reduces when one variable is not in the list" $ do
+            let expr = EBinOP Plus (v "a") (v "b")
+            let varnames = EConstant (ListC [ListC [ExprC (EVar (VarName "a")), IntC 1]])
+            let reducedExpr = reduceOp expr varnames
+            let expectedExpr = EBinOP Plus (EConstant $ IntC 1) (v "b")
+            reducedExpr `shouldBe` expectedExpr
+        it "correctly handles expressions with constants" $ do
+            let expr = EBinOP Plus (v "a") (EConstant $ IntC 2)  
+            let varnames = EConstant $ ListC [ListC [ExprC (v "a"), IntC 1]]
+            let reducedExpr = reduceOp expr varnames
+            let expectedExpr = EConstant $ IntC 3 
+            reducedExpr `shouldBe` expectedExpr
+

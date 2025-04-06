@@ -14,9 +14,15 @@ allProgramVars (Program varnames blocks) = nub $ varnames ++ concatMap genBlockV
         genBlockVars (BasicBlock _ assignments _) =
             map (\(Assigment varname _) -> varname) assignments
 
-generateStaticVars :: Program -> [VarName] -> Constant
+varStorageToVarnames :: Constant -> [VarName]
+varStorageToVarnames (ListC constants) = map extractVarName constants
+    where  
+        extractVarName (ListC ((ExprC (EVar varname)) : _)) = varname
+        extractVarName _ = error "Invalid structure in varStorageToVarnames"
+
+generateStaticVars :: Program -> Constant -> Constant
 generateStaticVars prog@(Program varnames blocks) staticVars = let
-    staticVN = allProgramVars prog \\ iterateDynamicVars blocks (varnames \\ staticVars)
+    staticVN = allProgramVars prog \\ iterateDynamicVars blocks (varnames \\ varStorageToVarnames staticVars)
     in ListC $ map (ExprC . EVar) staticVN
 
 iterateDynamicVars :: [BasicBlock] -> [VarName] -> [VarName]
