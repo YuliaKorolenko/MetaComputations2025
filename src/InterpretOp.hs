@@ -7,8 +7,16 @@ import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Debug.Trace (trace)
 import Data.Map (Map)
 
+
 equal :: Constant -> Constant -> Constant
-equal x y = if x == y then IntC 1 else IntC 0
+equal x y =
+    if x == y
+    then
+        -- trace ("Equal: " ++ show x ++ "=" ++ show y )
+        IntC 1
+    else
+        -- trace ("Not equal: " ++ show x ++ "!=" ++ show y )
+        IntC 0
 
 dropWhileOp :: Constant -> Constant -> Constant
 dropWhileOp a (ListC b) = ListC $ dropWhile (/= a) b
@@ -39,8 +47,12 @@ lookupOp (ProgramC (Program _ basicBlocks)) (StrC label)=
     let labeledBlock = find (\(BasicBlock l _ _) -> l == Label label) basicBlocks
     in
     case labeledBlock of
-        Just block -> blockToCommandsList block
-        Nothing -> error $ "Block with label: " ++ label ++ " not found."
+        Just block ->
+            -- trace ("In Lookup opertion: basick blocks:" ++ show basicBlocks ++ " block: " ++ show block)
+            blockToCommandsList block
+        Nothing ->
+            -- trace ("Lookup op: " ++ show basicBlocks)
+            error $ "Block with label: " ++ label ++ " not found."
 lookupOp (ListC constantList) varnameToFind =
     let findVar = find (\(ListC [l, rest]) -> l == varnameToFind) constantList
     in case findVar of
@@ -72,7 +84,9 @@ elemOp findEl l@(ListC (curEl : tail)) = if findEl == curEl
 elemOp findEl (ListC []) = BoolC False
 
 varListToMap :: [Constant] -> M.Map String Constant
-varListToMap constants = M.fromList $ map extractVarNameAndValue constants
+varListToMap constants =
+    -- trace ("current map2: " ++ show (M.fromList (map extractVarNameAndValue constants)))
+    M.fromList $ map extractVarNameAndValue constants
     where
         extractVarNameAndValue (ListC ((ExprC (EVar (VarName varname))) : val : _)) = (varname, val)
         extractVarNameAndValue _ = error "Invalid structure in varListToMap"

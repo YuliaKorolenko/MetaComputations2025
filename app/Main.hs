@@ -11,34 +11,32 @@ import Division
 import System.IO
 import Prelude
 import Interpret (reduceExpr, reduceOp)
-
-testProgramXY = program ["k"]
-              [block ["x" #= (4 :: Int)],
-               bl "h" [],
-               bja ["y" #= (6 :: Int)] $ returnCnst "x"]
+import Mix
+import Ast
 
 
-maxProgram :: Program
-maxProgram = program ["a", "b"]
- [
-    bj (if' (pl (v "a") (v "b")) "oneHundred" "plus"),
+maxSmall :: Program
+maxSmall = program ["a", "b", "c"]
+    [bl "initial" ["a" #= v "c"],
+    bl "tail_and_head_a" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")]]
 
-    BasicBlock (Label "oneHundred")
-      ["result" #= (100 :: Int)]
-      (returnCnst "result"),
+-- maxProgramWithConditions :: Program
+-- maxProgramWithConditions = program ["a", "b", "c"]
+--     [bl "initial" ["a" #= v "b"],
+--     bl "tail_and_head_a" [ "tail_a" #= tl (v "a"), "head_a" #= hd (v "a")],
+--     bl "tail_and_head_b" ["tail_b" #= tl (v "b"), "head_b" #= hd (v "b")],
+--     bl "tail_and_head_c" ["tail_c" #= tl (v "c"), "head_c" #= hd (v "tail_a")]]
 
-    BasicBlock (Label "plus")
-      ["res" #= pl (v "a") (v "b")]
-      (returnCnst "res")
-  ]
+abStatic :: Constant
+abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", lInt [1, 2, 3]],
+                  ListC [ExprC $ EVar $ VarName "b", lInt [5, 6, 8, 9]]]
 
-
--- reduceOp (EConstant (ExprC expr)) (EConstant (ListC constants)) 
 
 main :: IO ()
 main = do
-    let expr = EBinOP Plus (v "a") (v "b")
-    let varnames = EConstant (ListC [ListC [ExprC (EVar (VarName "a")), IntC 1]])
-    let reducedExpr = reduceOp expr varnames
-    let expectedExpr = IntC 1 
-    print reducedExpr
+    let staticV = generateStaticVars maxSmall abStatic
+    print staticV
+    result <- eval mix (M.fromList [("program", ProgramC maxSmall), ("division", staticV), ("vs_0", abStatic)])
+    case result of
+      Left err -> putStrLn $ "Error: " ++ show err
+      Right value -> print value 

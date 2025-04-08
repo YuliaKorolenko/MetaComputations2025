@@ -52,14 +52,18 @@ handleLabel EmptyLabel instr  =
 handleLabel (Label labelName) _ = do
     (_, currentLabelMap) <- get
     case M.lookup labelName currentLabelMap of
-        Just basicBlocks -> evalBasicBlocks basicBlocks
+        Just basicBlocks ->
+
+            evalBasicBlocks basicBlocks
         Nothing -> lift $ throwE $ UnexpectedElement ("Expected a label named '" ++ labelName ++ "', but it was not found in the LabelMap.")
 
 handleJumpBlock :: BasicBlock -> EvalM Constant
-handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) = handleLabel goLabel instr
+handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) =
+    -- trace ("goto :" ++ show goLabel)
+    handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     val <- evalExpr curExpr
-    -- traceM ("IF block: " ++ show val ++ " truelabel: " ++ show trueLabel ++ "false Label: " ++ show falseLabel)
+    -- traceM ("IF block: " ++ show val ++ " true-Label: " ++ show trueLabel ++ " false-Label: " ++ show falseLabel)
     case val of
         IntC 1 -> handleLabel trueLabel instr
         BoolC true -> handleLabel trueLabel instr
@@ -81,7 +85,7 @@ evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
     result <- evalExpr expr1
-    -- traceM ("Varname: " ++ varName ++ " result: " ++ show result)
+    traceM ("Varname: " ++ varName ++ " = " ++ show result)
     (currentVarMap, currentLabelMap) <- get
     let updatedVarMap = M.insert varName result currentVarMap
     put (updatedVarMap, currentLabelMap)
@@ -90,29 +94,35 @@ evalAssigments [] = return ()
 
 evalExpr :: Expr -> EvalM Constant
 evalExpr expr = do
-    reducedExpr <- reduceExpr expr  
+    reducedExpr <- reduceExpr expr
     case reducedExpr of
-        EConstant c -> return c  
-        _           -> error "Evaluation failed: Expression did not reduce to a constant."
+        EConstant c -> return c
+        smth           -> error ("Evaluation failed: Expression did not reduce to a constant: Reduced expression is: " ++ show smth)
 
 
 eval ::  Program -> VarMap -> IO (Either Error Constant)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))
-
-evalProgram :: Program -> [Expr] -> Program
-evalProgram = undefined
 
 reduceExpr :: Expr -> EvalM Expr
 reduceExpr (EConstant constant) = return $ EConstant constant
 reduceExpr v@(EVar (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
-        Just element -> return $ EConstant element
-        Nothing -> return v
+        Just (ExprC l) ->
+                -- trace "1111111111"
+                reduceExpr l
+        Just element   ->
+            -- trace "22222222222"
+            return $ EConstant element
+        Nothing        ->
+            -- trace "3333333333"
+            return v
 reduceExpr (EBinOP op expr1 expr2) = do
+    (currentVarMap, _) <- get
     leftEl <- reduceExpr expr1
     rightEl <- reduceExpr expr2
-    case op of 
+    traceM ("current binary function: " ++ show op ++ "leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
+    case op of
         Reduce -> return$ reduceOp leftEl expr2
         _ -> applyBinOp leftEl rightEl op
 reduceExpr (EUnOp op expr) = do
@@ -123,7 +133,7 @@ reduceExpr (ETernOp op exp1 exp2 exp3) = do
     secEl <- reduceExpr exp2
     thirdEl <- reduceExpr exp3
     applyTernOp firstEl secEl thirdEl op
-    
+
 getUnOpFunc :: UnOp -> (Constant -> Constant)
 getUnOpFunc op = case op of
     Hd -> headOp
@@ -157,13 +167,14 @@ applyBinOp :: Expr -> Expr -> BinOp  -> EvalM Expr
 applyBinOp expr1 expr2 op = do
     case (expr1, expr2) of
         (EConstant c1, EConstant c2) -> return $ EConstant (getBinOpFunc op c1 c2)
+        (EVar v, EConstant c2)       -> return $ EConstant (getBinOpFunc op (ExprC expr1) c2)
         _                            -> return $ EBinOP op expr1 expr2
 
 
 applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
 applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
-        (EConstant c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op c1 c2 c3)
+        (EVar c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op (ExprC expr1) c2 c3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
 
 
@@ -179,6 +190,10 @@ evalOp (ExprC expr) (ListC constants) = do
     let result = unsafePerformIO $ runExceptT $ evalStateT (evalExpr expr) (varListToMap constants, M.empty)
     case result of
         Left e -> undefined
-        Right value -> value
+        Right value ->
+            -- trace ("changed Map: " ++ show changedMap)
+            value
+evalOp e1 e2 = do
+    -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
+            undefined
 
-        
