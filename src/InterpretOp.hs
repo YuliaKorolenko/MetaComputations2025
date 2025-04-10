@@ -83,12 +83,12 @@ elemOp findEl l@(ListC (curEl : tail)) = if findEl == curEl
                                         else elemOp findEl (ListC tail)
 elemOp findEl (ListC []) = BoolC False
 
-varListToMap :: [Constant] -> M.Map String Constant
+varListToMap :: [Constant] -> M.Map String Expr
 varListToMap constants =
     -- trace ("current map2: " ++ show (M.fromList (map extractVarNameAndValue constants)))
     M.fromList $ map extractVarNameAndValue constants
     where
-        extractVarNameAndValue (ListC ((ExprC (EVar (VarName varname))) : val : _)) = (varname, val)
+        extractVarNameAndValue ((ListC ((ExprC (EVar (VarName varname))) : val : _))) = (varname, EConstant val)
         extractVarNameAndValue _ = error "Invalid structure in varListToMap"
 
 insertOp :: Constant -> Constant -> Constant -> Constant
@@ -102,6 +102,3 @@ insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])
     | var == varname = ListC [var, res]
     | otherwise      = ListC [var, value]
-
-consOp :: Constant -> Constant -> Constant
-consOp (ListC elements) newElem = ListC (elements ++ [newElem])

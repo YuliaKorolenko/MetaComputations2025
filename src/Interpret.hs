@@ -16,12 +16,12 @@ import InterpretOp
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
-type VarMap = M.Map String Constant
+type VarMap = M.Map String Expr
 type LabelMap = M.Map String [BasicBlock]
 
 type EvalM = StateT (VarMap, LabelMap) (ExceptT Error IO)
 
-evalVarMap :: Program -> VarMap -> EvalM Constant
+evalVarMap :: Program -> VarMap -> EvalM Expr
 evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
     -- liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
@@ -46,7 +46,7 @@ evalLabels ((BasicBlock EmptyLabel _ _) : tailBlocks) = evalLabels tailBlocks
 evalLabels [] = M.empty
 
 
-handleLabel :: Label -> Jump -> EvalM Constant
+handleLabel :: Label -> Jump -> EvalM Expr
 handleLabel EmptyLabel instr  =
     lift $ throwE $ UnexpectedElement ("Expected a non-empty label, but got EmptyLabel in '" ++ show instr ++ "'instruction.")
 handleLabel (Label labelName) _ = do
@@ -57,21 +57,21 @@ handleLabel (Label labelName) _ = do
             evalBasicBlocks basicBlocks
         Nothing -> lift $ throwE $ UnexpectedElement ("Expected a label named '" ++ labelName ++ "', but it was not found in the LabelMap.")
 
-handleJumpBlock :: BasicBlock -> EvalM Constant
+handleJumpBlock :: BasicBlock -> EvalM Expr
 handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) =
     -- trace ("goto :" ++ show goLabel)
     handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
-    val <- evalExpr curExpr
+    val <- reduceExpr curExpr
     -- traceM ("IF block: " ++ show val ++ " true-Label: " ++ show trueLabel ++ " false-Label: " ++ show falseLabel)
     case val of
-        IntC 1 -> handleLabel trueLabel instr
-        BoolC true -> handleLabel trueLabel instr
+        EConstant (IntC 1) -> handleLabel trueLabel instr
+        EConstant (BoolC true) -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
-handleJumpBlock (BasicBlock _ _ (Return curExpr)) = evalExpr curExpr
+handleJumpBlock (BasicBlock _ _ (Return curExpr)) = reduceExpr curExpr
 handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
 
-evalBasicBlocks :: [BasicBlock] -> EvalM Constant
+evalBasicBlocks :: [BasicBlock] -> EvalM Expr
 evalBasicBlocks (BasicBlock _ assigments EmptyJump : tailBlocks) = do
     -- traceM "evalBasicBlocks empty jump"
     evalAssigments assigments
@@ -84,7 +84,7 @@ evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in
 
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
-    result <- evalExpr expr1
+    result <- reduceExpr expr1
     traceM ("Varname: " ++ varName ++ " = " ++ show result)
     (currentVarMap, currentLabelMap) <- get
     let updatedVarMap = M.insert varName result currentVarMap
@@ -100,7 +100,7 @@ evalExpr expr = do
         smth           -> error ("Evaluation failed: Expression did not reduce to a constant: Reduced expression is: " ++ show smth)
 
 
-eval ::  Program -> VarMap -> IO (Either Error Constant)
+eval ::  Program -> VarMap -> IO (Either Error Expr)
 eval program varInit = runExceptT (evalStateT (evalVarMap program varInit) (M.empty, M.empty))
 
 reduceExpr :: Expr -> EvalM Expr
@@ -108,12 +108,12 @@ reduceExpr (EConstant constant) = return $ EConstant constant
 reduceExpr v@(EVar (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
-        Just (ExprC l) ->
+        Just (EConstant (ExprC l)) ->
                 -- trace "1111111111"
                 reduceExpr l
         Just element   ->
             -- trace "22222222222"
-            return $ EConstant element
+            return element
         Nothing        ->
             -- trace "3333333333"
             return v
@@ -121,9 +121,11 @@ reduceExpr (EBinOP op expr1 expr2) = do
     (currentVarMap, _) <- get
     leftEl <- reduceExpr expr1
     rightEl <- reduceExpr expr2
-    traceM ("current binary function: " ++ show op ++ "leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
+    traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
     case op of
-        Reduce -> return$ reduceOp leftEl expr2
+        Reduce ->
+            trace "start reduce"
+            return$ reduceOp leftEl rightEl
         _ -> applyBinOp leftEl rightEl op
 reduceExpr (EUnOp op expr) = do
     res <- reduceExpr expr
@@ -183,7 +185,11 @@ reduceOp expr (EConstant (ListC constants)) = do
     let result = unsafePerformIO $ runExceptT $ evalStateT (reduceExpr expr) (varListToMap constants, M.empty)
     case result of
         Left e -> undefined
-        Right value -> value
+        Right value ->
+            trace ("reduce operation: " ++ show value)
+            value
+reduceOp a1 a2 = trace ("Reduce op: " ++ show a1 ++ "  _:_ " ++ show a2)
+                undefined
 
 evalOp :: Constant -> Constant -> Constant
 evalOp (ExprC expr) (ListC constants) = do
@@ -197,3 +203,5 @@ evalOp e1 e2 = do
     -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
             undefined
 
+consOp :: Constant -> Constant -> Constant
+consOp (ListC smth) (ListC newElem) = ListC $ smth ++ newElem

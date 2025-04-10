@@ -22,7 +22,7 @@ mix = program ["program", "division", "vs_0"]
             "pending" #= tl (v "pending"),
             "marked" #= v "pair_pend" `u` v "marked",
             "bb" #= lookup' (v "program") (v "pp"),
-            "code" #=  ListC [ListC []] -- code : initial_code(pp, vs)
+            "code" #=  ListC [] -- code : initial_code(pp, vs)
             ] (goto "while-1"),
         blj "while-1" (if' ("bb" ?= ListC []) "end-1" "begin-1"),
         blja "begin-1" [            

@@ -13,6 +13,7 @@ import Prelude
 import Interpret (reduceExpr, reduceOp)
 import Mix
 import Ast
+import Prelude (print)
 
 
 maxSmall :: Program
@@ -36,7 +37,9 @@ main :: IO ()
 main = do
     let staticV = generateStaticVars maxSmall abStatic
     print staticV
-    result <- eval mix (M.fromList [("program", ProgramC maxSmall), ("division", staticV), ("vs_0", abStatic)])
+    result <- eval mix (M.fromList [("program", EConstant $ ProgramC maxSmall), ("division", EConstant staticV), ("vs_0", EConstant abStatic)])
     case result of
       Left err -> putStrLn $ "Error: " ++ show err
-      Right value -> print value 
+      Right value -> do 
+        print "Answer: "
+        print value
