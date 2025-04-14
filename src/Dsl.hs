@@ -89,8 +89,8 @@ tl = EUnOp Tl
 cons :: Constant -> Expr -> Expr
 cons cnst = pl (EConstant $ ListC [cnst])
 
-cons' :: Expr -> Expr -> Expr
-cons' = EBinOP Cons
+cons' :: Expr -> [Expr] -> Expr
+cons' = Cons
 
 drpWhile :: Expr -> Expr -> Expr
 drpWhile = EBinOP DropWhile

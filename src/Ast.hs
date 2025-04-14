@@ -29,8 +29,7 @@ data BinOp = Plus |
              Lookup |
              Elem |
              Eval |
-             Reduce |
-             Cons
+             Reduce 
                 deriving (Show, Eq)
 
 data UnOp = Hd |
@@ -42,7 +41,8 @@ data Expr = EConstant Constant |
             EVar VarName |
             EBinOP BinOp Expr Expr |
             EUnOp UnOp Expr |
-            ETernOp TernOp Expr Expr Expr
+            ETernOp TernOp Expr Expr Expr |
+            Cons Expr [Expr]
                 deriving (Show, Typeable, Eq)
 
 data Constant = IntC Int | 

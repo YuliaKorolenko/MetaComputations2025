@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use lambda-case" #-}
 module Interpret where
 
 import Control.Monad.State (StateT, put, MonadState(get), MonadTrans(lift), evalStateT)
@@ -135,6 +136,11 @@ reduceExpr (ETernOp op exp1 exp2 exp3) = do
     secEl <- reduceExpr exp2
     thirdEl <- reduceExpr exp3
     applyTernOp firstEl secEl thirdEl op
+reduceExpr (Cons expr1 lexpr) = do
+    leftEl <- reduceExpr expr1
+    reducedList <- traverse reduceExpr lexpr
+    traceM ("current CONS" ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show reducedList)
+    applyConsOp leftEl reducedList
 
 getUnOpFunc :: UnOp -> (Constant -> Constant)
 getUnOpFunc op = case op of
@@ -151,7 +157,6 @@ getBinOpFunc op = case op of
     Lookup    -> lookupOp
     Elem      -> elemOp
     Eval      -> evalOp
-    Cons      -> consOp
 
 getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
 getTernOpFunc op = case op of
@@ -167,9 +172,10 @@ applyUnOp expr1 op = do
 
 applyBinOp :: Expr -> Expr -> BinOp  -> EvalM Expr
 applyBinOp expr1 expr2 op = do
+    traceM ("apply binary operation: op: " ++ show op ++ "expr1 " ++ show expr1 ++ " expr2: " ++ show expr2)
     case (expr1, expr2) of
         (EConstant c1, EConstant c2) -> return $ EConstant (getBinOpFunc op c1 c2)
-        (EVar v, EConstant c2)       -> return $ EConstant (getBinOpFunc op (ExprC expr1) c2)
+        (expr, EConstant c2)         -> return $ EConstant (getBinOpFunc op (ExprC expr) c2)
         _                            -> return $ EBinOP op expr1 expr2
 
 
@@ -178,6 +184,15 @@ applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
         (EVar c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op (ExprC expr1) c2 c3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
+
+applyConsOp :: Expr -> [Expr] -> EvalM Expr
+applyConsOp e exprList = do
+    let answ = map (\expr -> case expr of
+            EConstant cnst -> cnst
+            expr -> ExprC expr) exprList
+    case e of
+        EConstant l@(ListC _) -> return $ EConstant (consOp l answ)
+        _ -> undefined
 
 
 reduceOp :: Expr -> Expr -> Expr
@@ -197,11 +212,16 @@ evalOp (ExprC expr) (ListC constants) = do
     case result of
         Left e -> undefined
         Right value ->
+            trace ("eval op: " ++ show value)
             -- trace ("changed Map: " ++ show changedMap)
             value
 evalOp e1 e2 = do
     -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
             undefined
 
-consOp :: Constant -> Constant -> Constant
-consOp (ListC smth) (ListC newElem) = ListC $ smth ++ newElem
+consOp :: Constant -> [Constant] -> Constant
+consOp (ListC []) newElem =
+  ListC [ListC newElem]
+consOp (ListC xs) newElem =
+  ListC (xs ++ [ListC newElem])
+consOp _ _ = error "Left-hand side must be a ListC"

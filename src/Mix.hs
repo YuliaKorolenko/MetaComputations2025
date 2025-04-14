@@ -25,7 +25,7 @@ mix = program ["program", "division", "vs_0"]
             "code" #=  ListC [] -- code : initial_code(pp, vs)
             ] (goto "while-1"),
         blj "while-1" (if' ("bb" ?= ListC []) "end-1" "begin-1"),
-        blja "begin-1" [            
+        blja "begin-1" [
             "command" #= hd (v "bb"),
             "bb" #= tl (v "bb"),
             "type_command" #= hd (v "command")] (goto "case_assigment"),
@@ -47,12 +47,12 @@ mix = program ["program", "division", "vs_0"]
             ] (goto "while-1"),
         blja "assigment-false" [
             "reduceX" #= reduce' (v "exp") (v "vs"),
-            "code" #= cons' (v "code") (lConst [EConstant $ s "assigment", v "X", v "reduceX"]) -- to code. 
+            "code" #= cons' (v "code") [EConstant $ s "assigment", v "X", v "reduceX"] -- to code. 
             ] (goto "while-1"),
 
         blj "end-1" (goto "residual"),
         blja "residual" [
-             "residual" #= cons' (v "residual") (v "code")
+             "residual" #= cons' (v "residual") [v "code"]
             ] (goto "while-0"),
         blj "end-0" (Return (v "residual"))
     ]

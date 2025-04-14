@@ -18,8 +18,7 @@ import Prelude (print)
 
 maxSmall :: Program
 maxSmall = program ["a", "b", "c"]
-    [bl "initial" ["a" #= v "c"],
-    bl "tail_and_head_a" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")]]
+    [bl "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")]]
 
 -- maxProgramWithConditions :: Program
 -- maxProgramWithConditions = program ["a", "b", "c"]
@@ -29,8 +28,7 @@ maxSmall = program ["a", "b", "c"]
 --     bl "tail_and_head_c" ["tail_c" #= tl (v "c"), "head_c" #= hd (v "tail_a")]]
 
 abStatic :: Constant
-abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", lInt [1, 2, 3]],
-                  ListC [ExprC $ EVar $ VarName "b", lInt [5, 6, 8, 9]]]
+abStatic = ListC [ListC [ExprC $ EVar $ VarName "b", lInt [5, 6, 8, 9]]]
 
 
 main :: IO ()
