@@ -14,3 +14,4 @@ main = do
     hspec specElem
     hspec specInsert
     hspec specReduce
+    hspec specToFromPrgrm

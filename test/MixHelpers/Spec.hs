@@ -3,7 +3,7 @@ module MixHelpers.Spec where
 import Test.Hspec
 import Data.List (sort)
 
-import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp)
+import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp, blockToCommandsList, commandsListToBlock)
 import Interpret(reduceOp)
 import Division
 import Dsl
@@ -48,11 +48,13 @@ specDivision = do
 
 answer1 :: Constant
 answer1 = ListC [
+    s "l2",
     ListC [s "assigment", ExprC $ v "a", ExprC $ v "c"],
     ListC [s "if", ExprC $ EConstant $ IntC 1, s "l1", s "l2"]]
 
 answer2 :: Constant
 answer2 = ListC [
+    s "check",
     ListC [s "assigment", ExprC $ v "y", ExprC $ EConstant $ IntC 6],
     ListC [s "assigment", ExprC $ v "l", ExprC $ v "n"],
     ListC [s "return", ExprC $ v "x"]]
@@ -60,11 +62,11 @@ answer2 = ListC [
 specLookup :: Spec
 specLookup = do
     describe "Test lookup on testABC" $ do
-        it "correctly create list of command in basicBlock" $ do
+        it "correctly create list of command in basicBlock answer1" $ do
             let result = lookupOp (ProgramC testABC) (s "l2")
             result `shouldBe` answer1
     describe "Test lookup on testProgramXY" $ do
-        it "correctly create list of command in basicBlock" $ do
+        it "correctly create list of command in basicBlock answer2" $ do
             let result = lookupOp (ProgramC testProgramXY) (s "check")
             result `shouldBe` answer2
     describe "Test lookup on variable and var storage" $ do
@@ -80,7 +82,7 @@ specElem = do
         it "correctly not find element in static variables" $ do
             let staticVariables = generateStaticVars testABC abStatic
             let bb = lookupOp (ProgramC testABC) (s "l1")
-            let command = headOp bb
+            let command = headOp $ tailOp bb
             let x = headOp $ tailOp command
             let trueFalse = elemOp x staticVariables
             trueFalse `shouldBe` BoolC False
@@ -88,7 +90,7 @@ specElem = do
         it "correctly find element in static variables" $ do
             let staticVariables = generateStaticVars testProgramXY xyStatic
             let bb = lookupOp (ProgramC testProgramXY) (s "check")
-            let command = headOp bb
+            let command = headOp $ tailOp bb
             let x = headOp $ tailOp command
             let trueFalse = elemOp x staticVariables
             trueFalse `shouldBe` BoolC True
@@ -142,3 +144,12 @@ specReduce = do
             let expectedExpr = EConstant $ IntC 3 
             reducedExpr `shouldBe` expectedExpr
 
+
+basicBlock1 :: BasicBlock
+basicBlock1 = blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x"
+
+
+specToFromPrgrm = describe "blockToCommandsList and commandsListToBlock roundtrip" $ do
+    it "correctly converts basicBlock1 to Constant and back" $ do
+        let reversedBasicBlock = commandsListToBlock $ blockToCommandsList basicBlock1
+        basicBlock1 `shouldBe` reversedBasicBlock

@@ -19,7 +19,8 @@ import Ast
 
 maxSmall :: Program
 maxSmall = program ["a", "b", "c"]
-    [blja "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")] (Return (v "b"))]
+    [blja "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")] (goto "tail_and_head_b"),
+     blja "tail_and_head_b" ["tail_b" #= tl (v "b"), "head_b" #= hd (v "b")] (Return (v "tail_a"))]
 
 -- maxProgramWithConditions :: Program
 -- maxProgramWithConditions = program ["a", "b", "c"]
@@ -31,6 +32,8 @@ maxSmall = program ["a", "b", "c"]
 abStatic :: Constant
 abStatic = ListC [ListC [ExprC $ EVar $ VarName "b", lInt [5, 6, 8, 9]]]
 
+basicBlock1 :: BasicBlock
+basicBlock1 = blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x"
 
 main :: IO ()
 main = do

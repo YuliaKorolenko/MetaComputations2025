@@ -141,6 +141,7 @@ getUnOpFunc :: UnOp -> (Constant -> Constant)
 getUnOpFunc op = case op of
     Hd -> headOp
     Tl -> tailOp
+    ToPrgrm -> toProgramOp
 
 getBinOpFunc :: BinOp -> (Constant -> Constant -> Constant)
 getBinOpFunc op = case op of
@@ -215,6 +216,7 @@ evalOp e1 e2 = do
             undefined
 
 consOp :: Constant -> [Constant] -> Constant
+consOp (ListC []) [strc@(StrC smth)] = ListC [strc]
 consOp (ListC []) newElem =
   ListC [ListC newElem]
 consOp (ListC xs) newElem =

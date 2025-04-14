@@ -32,7 +32,9 @@ data BinOp = Plus |
                 deriving (Show, Eq)
 
 data UnOp = Hd |
-            Tl deriving (Show, Eq)
+            Tl |
+            ToPrgrm  
+            deriving (Show, Eq)
 
 data TernOp = Insert deriving (Show, Eq)
 

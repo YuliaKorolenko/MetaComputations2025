@@ -61,12 +61,28 @@ lookupOp (ListC constantList) varnameToFind =
 
 -- First element in list will be indentificator: assigment, goto, if, return
 blockToCommandsList :: BasicBlock -> Constant
-blockToCommandsList (BasicBlock label assigments jump) =
+blockToCommandsList (BasicBlock (Label labelName) assigments jump) =
     let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
         jumpElement = jumpToCommand jump
-    in if null jumpElement
-       then ListC assigmentList
-       else ListC $ assigmentList ++ [ListC jumpElement]
+    in ListC $ [StrC labelName] ++ assigmentList ++ [ListC jumpElement]
+
+commandsListToBlock :: Constant -> BasicBlock
+commandsListToBlock (ListC ((StrC name):rest)) = do
+    let (assigmentCmds, jumpCmd) = case reverse rest of
+            [] -> ([], [])
+            (lastCmd:revAssigs) -> (reverse revAssigs, [lastCmd])
+    let assigments = map commandToAssigment assigmentCmds
+
+    let jump = commandToJump $ head jumpCmd
+    BasicBlock (Label name) assigments jump
+
+commandToAssigment :: Constant -> Assigment
+commandToAssigment (ListC [StrC "assigment", ExprC (EVar varName), ExprC expr]) = Assigment varName expr
+
+commandToJump :: Constant -> Jump
+commandToJump (ListC [StrC "goto", StrC labelName]) = Goto (Label labelName)
+commandToJump (ListC [StrC "if", ExprC expr, StrC ifTrueLabel, StrC ifFalseLabel]) = If expr (Label ifTrueLabel) (Label ifFalseLabel)
+commandToJump (ListC [StrC "return", ExprC expr]) = Return expr
 
 jumpToCommand :: Jump -> [Constant]
 jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
@@ -96,6 +112,9 @@ insertOp varToFind res (ListC varnames@(headVar@(ListC [curVar, _]) : tailVar)) 
     in if isInList == BoolC True
        then ListC (map (insertInExpr varToFind res) varnames)
        else ListC $ varnames ++ [ListC [varToFind, res]]
+
+toProgramOp ::  Constant -> Constant
+toProgramOp (ListC [ListC blockConstants]) = ProgramC $ Program [] (map commandsListToBlock blockConstants)
 
 insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])
