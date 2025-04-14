@@ -11,10 +11,10 @@ import Ast
 import Test.Tasty.Runners (Outcome(Failure))
 
 testProgramXY = program ["k", "n"]
-            [block ["x" #= (4 :: Int)],
-            block ["f" #= "k"],
-            blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x",
-            block ["f" #= "n"]]
+            [bja ["x" #= (4 :: Int)] (goto "f"),
+             blja "f1" ["f" #= "k"] (goto "check"),
+             blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x",
+             bja ["f" #= "n"] (goto "f")]
 
 xyStatic :: Constant
 xyStatic = ListC [ListC [ExprC $ EVar $ VarName "k", IntC 1]]

@@ -6,13 +6,13 @@ import Ast
 turingInterpreter :: Program
 turingInterpreter = program ["Q", "Right"]
                     [
-                        bl  "init"  ["QTail" #= "Q", "Left" #= ListC []],   -- init: QTail := Q; Left := '();
+                        blja  "init"  ["QTail" #= "Q", "Left" #= ListC []] (goto "loop"),   -- init: QTail := Q; Left := '();
                         blj "loop"  (if' (v "QTail" ?= ListC []) "stop" "cont"),                   -- "loop: if QTail = '() goto stop else cont;"
                         blj "stop"  (returnCnst "Right"),                                                -- stop : return right;
-                        bl  "cont"  ["Instruction" #= hd (v "QTail"),               -- cont : Instruction := First_instruction(QTail);
+                        blja  "cont"  ["Instruction" #= hd (v "QTail"),               -- cont : Instruction := First_instruction(QTail);
                                      "QTail"       #= tl (v "QTail"),                      -- QTail := rest(Qtail);
-                                     "Operator"    #= hd (v "Instruction")],      -- Operator := hd(tl(Instruction)); Почему hd(tl)?
-                        bj          (if' ("Operator" ?= s "right") "do-right" "cont1"),  -- if Operator = 'right goto do-right else cont1;
+                                     "Operator"    #= hd (v "Instruction")] (goto "cont0"),      -- Operator := hd(tl(Instruction)); Почему hd(tl)?
+                        blj "cont0" (if' ("Operator" ?= s "right") "do-right" "cont1"),  -- if Operator = 'right goto do-right else cont1;
                         blj "cont1" (if' ("Operator" ?= s "left") "do-left" "cont2"),    -- cont1: if Operator = 'left goto do-left else cont2;     
                         blj "cont2" (if' ("Operator" ?= s "write") "do-write" "cont3"),  -- cont2: if Operator = 'write goto do-write else cont3;   
                         blj "cont3" (if' ("Operator" ?= s "goto") "do-goto" "cont4"),    -- cont3: if Operator = 'goto goto do-goto else cont4;   

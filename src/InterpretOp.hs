@@ -72,7 +72,6 @@ jumpToCommand :: Jump -> [Constant]
 jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
 jumpToCommand (If expr1 (Label ifTrueLabel) (Label ifFalseLabel)) = [StrC "if", ExprC expr1, StrC ifTrueLabel, StrC ifFalseLabel]
 jumpToCommand (Return expr) = [StrC "return", ExprC expr]
-jumpToCommand EmptyJump = []
 
 elemOp :: Constant -> Constant -> Constant
 elemOp findEl l@(ListC (ListC [cuvar, expr]  : tail)) = if findEl == cuvar

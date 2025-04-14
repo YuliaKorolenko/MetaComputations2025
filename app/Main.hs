@@ -14,11 +14,12 @@ import Interpret (reduceExpr, reduceOp)
 import Mix
 import Ast
 import Prelude (print)
+import Ast 
 
 
 maxSmall :: Program
 maxSmall = program ["a", "b", "c"]
-    [bl "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")]]
+    [blja "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")] (Return (v "b"))]
 
 -- maxProgramWithConditions :: Program
 -- maxProgramWithConditions = program ["a", "b", "c"]

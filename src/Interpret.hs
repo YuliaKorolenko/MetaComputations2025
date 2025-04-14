@@ -70,13 +70,8 @@ handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
         EConstant (BoolC true) -> handleLabel trueLabel instr
         _ -> handleLabel falseLabel instr
 handleJumpBlock (BasicBlock _ _ (Return curExpr)) = reduceExpr curExpr
-handleJumpBlock _ = lift $ throwE $ UnexpectedElement "In jump blocks"
 
 evalBasicBlocks :: [BasicBlock] -> EvalM Expr
-evalBasicBlocks (BasicBlock _ assigments EmptyJump : tailBlocks) = do
-    -- traceM "evalBasicBlocks empty jump"
-    evalAssigments assigments
-    evalBasicBlocks tailBlocks
 evalBasicBlocks (block@(BasicBlock _ assigments _) : _) = do
     -- traceM "evalBasicBlocks jump"
     evalAssigments assigments

@@ -15,8 +15,8 @@ testProgramVar = program ["x", "y"]
                 [bj $ returnCnst "x"]
 
 testProgramXY = Program []
-              [block ["x" #= (4 :: Int)],
-               bja ["y" #= (6 :: Int)] $ returnCnst "x"]
+              [bja ["x" #= (4 :: Int)] (goto "test1"),
+               blja "test1" ["y" #= (6 :: Int)] $ returnCnst "x"]
 
 maxProgram :: Program
 maxProgram = program ["a", "b"]

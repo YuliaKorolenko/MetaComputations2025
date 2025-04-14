@@ -14,7 +14,6 @@ data Jump
     = Goto Label 
     | If Expr Label Label 
     | Return Expr 
-    | EmptyJump
     deriving (Show, Eq)
 
 newtype VarName = VarName String deriving (Show, Eq, Ord)

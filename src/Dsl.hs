@@ -58,12 +58,6 @@ bj = BasicBlock EmptyLabel []
 bja :: [Assigment] -> Jump -> BasicBlock
 bja = BasicBlock EmptyLabel
 
-bl :: String -> [Assigment] -> BasicBlock
-bl labelName assigments = BasicBlock (Label labelName) assigments EmptyJump
-
-block :: [Assigment] -> BasicBlock
-block assigments = BasicBlock EmptyLabel assigments EmptyJump
-
 -- Lists
 lInt :: [Int] -> Constant
 lInt elems = ListC (map IntC elems)
