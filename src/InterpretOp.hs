@@ -64,10 +64,10 @@ blockToCommandsList :: BasicBlock -> Constant
 blockToCommandsList (BasicBlock (Label labelName) assigments jump) =
     let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
         jumpElement = jumpToCommand jump
-    in ListC $ [StrC labelName] ++ assigmentList ++ [ListC jumpElement]
+    in ListC $ [ListC [StrC labelName]] ++ assigmentList ++ [ListC jumpElement]
 
 commandsListToBlock :: Constant -> BasicBlock
-commandsListToBlock (ListC ((StrC name):rest)) = do
+commandsListToBlock (ListC ((ListC [StrC name]):rest)) = do
     let (assigmentCmds, jumpCmd) = case reverse rest of
             [] -> ([], [])
             (lastCmd:revAssigs) -> (reverse revAssigs, [lastCmd])
@@ -83,6 +83,7 @@ commandToJump :: Constant -> Jump
 commandToJump (ListC [StrC "goto", StrC labelName]) = Goto (Label labelName)
 commandToJump (ListC [StrC "if", ExprC expr, StrC ifTrueLabel, StrC ifFalseLabel]) = If expr (Label ifTrueLabel) (Label ifFalseLabel)
 commandToJump (ListC [StrC "return", ExprC expr]) = Return expr
+commandToJump (ListC [StrC "return", cnst]) = Return $ EConstant cnst
 
 jumpToCommand :: Jump -> [Constant]
 jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
@@ -114,7 +115,7 @@ insertOp varToFind res (ListC varnames@(headVar@(ListC [curVar, _]) : tailVar)) 
        else ListC $ varnames ++ [ListC [varToFind, res]]
 
 toProgramOp ::  Constant -> Constant
-toProgramOp (ListC [ListC blockConstants]) = ProgramC $ Program [] (map commandsListToBlock blockConstants)
+toProgramOp (ListC blockConstants) = ProgramC $ Program [] (map commandsListToBlock blockConstants)
 
 insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])

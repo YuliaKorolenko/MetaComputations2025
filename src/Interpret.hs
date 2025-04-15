@@ -216,9 +216,7 @@ evalOp e1 e2 = do
             undefined
 
 consOp :: Constant -> [Constant] -> Constant
-consOp (ListC []) [strc@(StrC smth)] = ListC [strc]
-consOp (ListC []) newElem =
-  ListC [ListC newElem]
+consOp (ListC []) [smth] = ListC [smth]
 consOp (ListC xs) newElem =
   ListC (xs ++ [ListC newElem])
 consOp _ _ = error "Left-hand side must be a ListC"

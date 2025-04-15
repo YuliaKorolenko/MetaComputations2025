@@ -3,7 +3,7 @@ module MixHelpers.Spec where
 import Test.Hspec
 import Data.List (sort)
 
-import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp, blockToCommandsList, commandsListToBlock)
+import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp, blockToCommandsList, commandsListToBlock, toProgramOp)
 import Interpret(reduceOp)
 import Division
 import Dsl
@@ -48,13 +48,13 @@ specDivision = do
 
 answer1 :: Constant
 answer1 = ListC [
-    s "l2",
+    ListC [s "l2"],
     ListC [s "assigment", ExprC $ v "a", ExprC $ v "c"],
     ListC [s "if", ExprC $ EConstant $ IntC 1, s "l1", s "l2"]]
 
 answer2 :: Constant
 answer2 = ListC [
-    s "check",
+    ListC [s "check"],
     ListC [s "assigment", ExprC $ v "y", ExprC $ EConstant $ IntC 6],
     ListC [s "assigment", ExprC $ v "l", ExprC $ v "n"],
     ListC [s "return", ExprC $ v "x"]]
@@ -153,3 +153,10 @@ specToFromPrgrm = describe "blockToCommandsList and commandsListToBlock roundtri
     it "correctly converts basicBlock1 to Constant and back" $ do
         let reversedBasicBlock = commandsListToBlock $ blockToCommandsList basicBlock1
         basicBlock1 `shouldBe` reversedBasicBlock
+    it "should correctly convert back to Constant format" $ do
+        let block = ProgramC $ program [] [blj "tail_and_head_b" (Return (EConstant (ListC [IntC 6, IntC 8, IntC 9])))]
+            
+        let expectedConstant = ListC [ ListC [
+                        ListC [StrC "tail_and_head_b"],
+                        ListC [StrC "return", ListC [IntC 6, IntC 8, IntC 9]]]]
+        block `shouldBe` toProgramOp expectedConstant   
