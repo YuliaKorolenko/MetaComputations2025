@@ -34,7 +34,7 @@ mix = program ["program", "division", "vs_0"]
 
         blj "case_assigment" (if' ("type_command" ?= s "assigment") "assigment-0" "case_goto"),
         blj "case_goto"      (if' ("type_command" ?= s "goto") "goto-0" "case_if"),
-        blj "case_if"        (if' ("type_command" ?= s "if") "if" "case_return"),
+        blj "case_if"        (if' ("type_command" ?= s "if") "if-0" "case_return"),
         blj "case_return"    (if' ("type_command" ?= s "return") "return-0" "case_error"),
         blj "case_error"     (Return (pl (EConstant $ s "Coomand unexpected: ") (v "type_command"))),
 
@@ -52,12 +52,32 @@ mix = program ["program", "division", "vs_0"]
             "code" #= cons' (v "code") [EConstant $ s "assigment", v "X", v "reduceX"] -- to code. 
             ] (goto "while-1"),
 
+        blja "if-0" [
+            "exp" #= hd (tl (v "command")),
+            "true_label" #= hd (tl (tl (v "command"))),
+            "false_label" #= hd (tl (tl (tl (v "command")))),
+            "is_static" #= v "exp" `elem'` v "division"
+            ] (if' (v "is_static" ?= True) "if_static" "if_dynamic"),
+
+        blja "if_static" [
+            "if_res" #= eval' (v "exp") (v "vs")
+            ] (if' (v "if_res" ?= True) "if_true" "if_false"),
+        blja "if_true" [
+            "bb" #= lookup' (v "program") (v "true_label"),
+            "label_name_bb"  #= hd (v "bb"),
+            "bb" #= tl (v "bb")
+            ] (goto "while-1"),
+        blja "if_false" [
+            "bb" #= lookup' (v "program") (v "false_label"),
+            "label_name_bb"  #= hd (v "bb"),
+            "bb" #= tl (v "bb")
+            ] (goto "while-1"),
+
         blja "goto-0" [
             "pp_" #= hd ( tl (v "command")),
             "bb" #= lookup' (v "program") (v "pp_"),
             "label_name_bb"  #= hd (v "bb"),
-            "bb" #= tl (v "bb"),
-            "code" #=  cons' (EConstant (ListC [])) [v "label_name_bb"]
+            "bb" #= tl (v "bb")
             ] (goto "while-1"),    
 
         blja "return-0" [

@@ -4,6 +4,7 @@ import Test.Hspec
 import FlowChart.Spec
 import TuringMachine.Spec
 import MixHelpers.Spec
+import Mix.Spec
 
 main :: IO ()
 main = do
@@ -15,3 +16,4 @@ main = do
     hspec specInsert
     hspec specReduce
     hspec specToFromPrgrm
+    hspec specMix

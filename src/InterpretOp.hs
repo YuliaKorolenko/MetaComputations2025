@@ -6,17 +6,18 @@ import qualified Data.Map.Strict as M
 import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Debug.Trace (trace)
 import Data.Map (Map)
-
+import qualified Data.Set as Set
+import Foreign.C (CBool(CBool))
 
 equal :: Constant -> Constant -> Constant
 equal x y =
     if x == y
     then
         -- trace ("Equal: " ++ show x ++ "=" ++ show y )
-        IntC 1
+        BoolC True
     else
         -- trace ("Not equal: " ++ show x ++ "!=" ++ show y )
-        IntC 0
+        BoolC False
 
 dropWhileOp :: Constant -> Constant -> Constant
 dropWhileOp a (ListC b) = ListC $ dropWhile (/= a) b
@@ -32,11 +33,14 @@ plus (StrC strLeft) (StrC strRight) = StrC $ strLeft ++ strRight
 
 headOp :: Constant -> Constant
 headOp (ListC (a : aTail)) = a
-headOp _ = undefined
+headOp (ListC []) =
+    trace ("IN EMPTY HEAD OP")
+    undefined
 
 tailOp :: Constant -> Constant
 tailOp (ListC (a : aTail)) = ListC aTail
 tailOp (StrC (a : aTail)) = StrC aTail
+tailOp (ListC []) = undefined
 
 unionOp :: Constant -> Constant -> Constant
 unionOp (ListC leftList) (ListC rightList) = ListC (nub (leftList ++ rightList))
@@ -98,6 +102,20 @@ elemOp findEl l@(ListC (curEl : tail)) = if findEl == curEl
                                         then BoolC True
                                         else elemOp findEl (ListC tail)
 elemOp findEl (ListC []) = BoolC False
+
+checkAllVars :: Constant -> Constant -> Constant
+checkAllVars (ExprC expr) constant =
+    let vars = collectVars expr
+    in BoolC $ all (\var -> elemOp (ExprC (EVar var)) constant == BoolC True) vars
+
+collectVars :: Expr -> Set.Set VarName
+collectVars expr = case expr of
+    EConstant _      -> Set.empty
+    EVar var         -> Set.singleton var
+    EBinOP _ e1 e2   -> Set.union (collectVars e1) (collectVars e2)
+    EUnOp _ e        -> collectVars e
+    ETernOp _ e1 e2 e3 -> Set.unions [collectVars e1, collectVars e2, collectVars e3]
+    Cons e es        -> Set.union (collectVars e) (Set.unions (map collectVars es))
 
 varListToMap :: [Constant] -> M.Map String Expr
 varListToMap constants =
