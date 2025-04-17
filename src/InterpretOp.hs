@@ -7,7 +7,8 @@ import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Debug.Trace (trace)
 import Data.Map (Map)
 import qualified Data.Set as Set
-import Foreign.C (CBool(CBool))
+import Data.Ord (comparing)
+import qualified Data.List as L
 
 equal :: Constant -> Constant -> Constant
 equal x y =
@@ -79,6 +80,8 @@ commandsListToBlock (ListC ((ListC [StrC name]):rest)) = do
 
     let jump = commandToJump $ head jumpCmd
     BasicBlock (Label name) assigments jump
+commandsListToBlock el = trace ("COMMANDS LIST TO BLOCK: " ++ show el)
+                         undefined
 
 commandToAssigment :: Constant -> Assigment
 commandToAssigment (ListC [StrC "assigment", ExprC (EVar varName), ExprC expr]) = Assigment varName expr
@@ -107,6 +110,8 @@ checkAllVars :: Constant -> Constant -> Constant
 checkAllVars (ExprC expr) constant =
     let vars = collectVars expr
     in BoolC $ all (\var -> elemOp (ExprC (EVar var)) constant == BoolC True) vars
+checkAllVars el constant = trace ("COMMANDS checkAllVars: " ++ show el ++ "  " ++ show constant)
+                  undefined
 
 collectVars :: Expr -> Set.Set VarName
 collectVars expr = case expr of
@@ -139,3 +144,35 @@ insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])
     | var == varname = ListC [var, res]
     | otherwise      = ListC [var, value]
+
+consOp :: Constant -> [Constant] -> Constant
+consOp (ListC []) [smth] = ListC [smth]
+consOp (ListC xs) newElem =
+  ListC (xs ++ [ListC newElem])
+consOp _ _ = error "Left-hand side must be a ListC"
+
+pairOp :: Constant -> Constant -> Constant
+pairOp const1 const2 = ListC [const1, const2]
+
+genLabelOp :: Constant -> Constant
+genLabelOp (ListC [StrC label, el2]) = StrC ("(" ++ label ++ ", " ++ extractAndSortValues el2 ++ ")")
+genLabelOp el = trace ("GENERATE LABEL OP: " ++ show el)
+             undefined
+
+extractAndSortValues :: Constant -> String
+extractAndSortValues (ListC items) =
+    let pairs = concatMap extractPairs items
+        sorted = L.sortBy (comparing fst) pairs
+        elements = map (\(name, val) -> name ++ "=" ++ showConstant val) sorted
+    in L.intercalate "; " elements
+extractAndSortValues _ = error "Invalid vs0 structure"
+
+extractPairs :: Constant -> [(String, Constant)]
+extractPairs (ListC [ExprC (EVar (VarName name)), val]) = [("'" ++ name ++ "'" , val)]
+
+showConstant :: Constant -> String
+showConstant (ListC items) = "[" ++ L.intercalate "," (map showConstant items) ++ "]"
+showConstant (IntC i) = show i
+showConstant (StrC s) = s
+showConstant (ExprC e) = show e
+

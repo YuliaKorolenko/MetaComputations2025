@@ -27,13 +27,17 @@ data BinOp = Plus |
              Union |
              Lookup |
              Elem |
+             IsStatic |
              Eval |
-             Reduce 
+             Reduce |
+             Pair | 
+             Except
                 deriving (Show, Eq)
 
 data UnOp = Hd |
             Tl |
-            ToPrgrm  
+            ToPrgrm |
+            GenLabel  
             deriving (Show, Eq)
 
 data TernOp = Insert deriving (Show, Eq)

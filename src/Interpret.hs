@@ -142,6 +142,7 @@ getUnOpFunc op = case op of
     Hd -> headOp
     Tl -> tailOp
     ToPrgrm -> toProgramOp
+    GenLabel -> genLabelOp
 
 getBinOpFunc :: BinOp -> (Constant -> Constant -> Constant)
 getBinOpFunc op = case op of
@@ -151,8 +152,10 @@ getBinOpFunc op = case op of
     Drop      -> dropOp
     Union     -> unionOp
     Lookup    -> lookupOp
-    Elem      -> checkAllVars
+    IsStatic  -> checkAllVars
+    Elem      -> elemOp
     Eval      -> evalOp
+    Pair      -> pairOp
 
 getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
 getTernOpFunc op = case op of
@@ -183,6 +186,7 @@ applyTernOp expr1 expr2 expr3 op = do
 
 applyConsOp :: Expr -> [Expr] -> EvalM Expr
 applyConsOp e exprList = do
+    traceM ("Apply cons operation: " ++ show e ++ " expresion list: " ++ show exprList)
     let answ = map (\expr -> case expr of
             EConstant cnst -> cnst
             expr -> ExprC expr) exprList
@@ -214,9 +218,3 @@ evalOp (ExprC expr) (ListC constants) = do
 evalOp e1 e2 = do
     -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
             undefined
-
-consOp :: Constant -> [Constant] -> Constant
-consOp (ListC []) [smth] = ListC [smth]
-consOp (ListC xs) newElem =
-  ListC (xs ++ [ListC newElem])
-consOp _ _ = error "Left-hand side must be a ListC"

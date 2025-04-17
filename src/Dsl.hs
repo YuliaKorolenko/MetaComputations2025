@@ -113,6 +113,9 @@ pl = EBinOP Plus
 u :: Expr -> Expr -> Expr
 u = EBinOP Union
 
+isStatic' :: Expr -> Expr -> Expr
+isStatic' = EBinOP IsStatic
+
 elem' :: Expr -> Expr -> Expr
 elem' = EBinOP Elem
 
@@ -128,5 +131,8 @@ goto label = Goto $ Label label
 s :: String -> Constant
 s = StrC
 
-pair :: Constant -> String -> Constant
-pair const1 varName = ListC [const1, ExprC $ v varName]
+pair :: Expr -> Expr -> Expr
+pair = EBinOP Pair 
+
+genLabel :: Expr -> Expr
+genLabel = EUnOp GenLabel

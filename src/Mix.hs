@@ -9,8 +9,9 @@ mix :: Program
 mix = program ["program", "division", "vs_0"]
     [
         blja "init" [
-            "pending" #= ListC [pair (s "initial") "vs_0"],
-            "marked" #= ListC [],
+            "pending" #= ListC [],
+            "pending" #= cons'  (v "pending") [pair (EConstant $ s "initial") (v "vs_0")],
+            "marked" #= ListC [ ],
             "residual" #= ListC []
         ] (goto "while-0") ,
         blj "while-0"
@@ -20,11 +21,11 @@ mix = program ["program", "division", "vs_0"]
             "pp" #= hd (v "pair_pend"),
             "vs" #= hd (tl (v "pair_pend")),
             "pending" #= tl (v "pending"),
-            "marked" #= v "pair_pend" `u` v "marked",
+            "marked" #= cons' (v "marked") [v "pair_pend"],
             "bb" #= lookup' (v "program") (v "pp"),
-            "label_name_bb"  #= hd (v "bb"),
+            "label_name_bb"  #= hd (hd (v "bb")),
             "bb" #= tl (v "bb"),
-            "code" #=  cons' (EConstant (ListC [])) [v "label_name_bb"] -- code : initial_code(pp, vs)
+            "code" #=  cons' (EConstant (ListC [])) [cons' (EConstant (ListC [])) [genLabel $ pair (v "label_name_bb") (v "vs")]] -- code : initial_code(pp, vs)
             ] (goto "while-1"),
         blj "while-1" (if' ("bb" ?= ListC []) "end-1" "begin-1"),
         blja "begin-1" [
@@ -41,7 +42,7 @@ mix = program ["program", "division", "vs_0"]
         blja "assigment-0" [
             "X" #= hd (tl (v "command")),
             "exp" #= hd (tl (tl (v "command"))),
-            "is_static" #= v "X" `elem'` v "division"
+            "is_static" #= v "X" `isStatic'` v "division"
             ] (if' (v "is_static" ?= True) "assigment-true" "assigment-false"),
         blja "assigment-true" [
             "evalX" #= eval' (v "exp") (v "vs"),
@@ -56,7 +57,7 @@ mix = program ["program", "division", "vs_0"]
             "exp" #= hd (tl (v "command")),
             "true_label" #= hd (tl (tl (v "command"))),
             "false_label" #= hd (tl (tl (tl (v "command")))),
-            "is_static" #= v "exp" `elem'` v "division"
+            "is_static" #= v "exp" `isStatic'` v "division"
             ] (if' (v "is_static" ?= True) "if_static" "if_dynamic"),
 
         blja "if_static" [
@@ -72,6 +73,27 @@ mix = program ["program", "division", "vs_0"]
             "label_name_bb"  #= hd (v "bb"),
             "bb" #= tl (v "bb")
             ] (goto "while-1"),
+
+        blja "if_dynamic" [
+            "reduceExpr" #= reduce' (v "exp") (v "vs"),
+            "code" #= cons' (v "code") [EConstant $ s "if", v "reduceRexpr", genLabel $ pair (v "true_label") (v "vs"), genLabel $ pair (v "false_label") (v "vs")],
+            "true_pair" #= pair (v "true_label") (v "vs"),
+            "false_pair" #= pair (v "false_label") (v "vs")
+            ] (goto "add_true_label_if"),
+
+        blja "add_true_label_if" [
+            "is_true_elem" #= v "true_pair" `elem'` v "marked"
+            ] (if' (v "is_true_elem" ?= True) "add_false_label_if" "add_true_label"),
+        blja "add_true_label" [
+            "pending" #= cons' (v "pending") [v "true_pair"]
+            ] (goto "add_false_label_if"),    
+
+        blja "add_false_label_if" [
+            "is_false_elem" #= v "false_pair" `elem'` v "marked"
+            ] (if' (v "is_false_elem" ?= True) "while-1" "add_false_label"),
+        blja "add_false_label" [
+            "pending" #= cons' (v "pending") [v "false_pair"]
+            ] (goto "while-1"),  
 
         blja "goto-0" [
             "pp_" #= hd ( tl (v "command")),
