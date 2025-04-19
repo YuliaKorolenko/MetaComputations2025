@@ -35,7 +35,7 @@ plus (StrC strLeft) (StrC strRight) = StrC $ strLeft ++ strRight
 headOp :: Constant -> Constant
 headOp (ListC (a : aTail)) = a
 headOp (ListC []) =
-    trace ("IN EMPTY HEAD OP")
+    -- trace ("IN EMPTY HEAD OP")
     undefined
 
 tailOp :: Constant -> Constant
@@ -69,10 +69,10 @@ blockToCommandsList :: BasicBlock -> Constant
 blockToCommandsList (BasicBlock (Label labelName) assigments jump) =
     let assigmentList = map (\(Assigment varName expr) -> ListC [StrC "assigment", ExprC $ EVar varName , ExprC expr]) assigments
         jumpElement = jumpToCommand jump
-    in ListC $ [ListC [StrC labelName]] ++ assigmentList ++ [ListC jumpElement]
+    in ListC $ [StrC labelName] ++ assigmentList ++ [ListC jumpElement]
 
 commandsListToBlock :: Constant -> BasicBlock
-commandsListToBlock (ListC ((ListC [StrC name]):rest)) = do
+commandsListToBlock (ListC ((StrC name):rest)) = do
     let (assigmentCmds, jumpCmd) = case reverse rest of
             [] -> ([], [])
             (lastCmd:revAssigs) -> (reverse revAssigs, [lastCmd])
@@ -97,19 +97,26 @@ jumpToCommand (Goto (Label labelName)) = [StrC "goto", StrC labelName]
 jumpToCommand (If expr1 (Label ifTrueLabel) (Label ifFalseLabel)) = [StrC "if", ExprC expr1, StrC ifTrueLabel, StrC ifFalseLabel]
 jumpToCommand (Return expr) = [StrC "return", ExprC expr]
 
-elemOp :: Constant -> Constant -> Constant
-elemOp findEl l@(ListC (ListC [cuvar, expr]  : tail)) = if findEl == cuvar
+findByLabelOp :: Constant -> Constant -> Constant
+findByLabelOp findEl l@(ListC (ListC [cuvar, expr]  : tail)) = if findEl == cuvar
                                        then BoolC True
-                                       else elemOp findEl (ListC tail)
-elemOp findEl l@(ListC (curEl : tail)) = if findEl == curEl
+                                       else findByLabelOp findEl (ListC tail)
+findByLabelOp findEl l@(ListC (curEl : tail)) = if findEl == curEl
                                         then BoolC True
-                                        else elemOp findEl (ListC tail)
-elemOp findEl (ListC []) = BoolC False
+                                        else findByLabelOp findEl (ListC tail)
+findByLabelOp findEl (ListC []) = BoolC False
+
+elemOp :: Constant -> Constant -> Constant
+elemOp findEl (ListC (curEl : tail)) =
+    if findEl == curEl
+    then BoolC True
+    else elemOp findEl (ListC tail)
+elemOp _ (ListC []) = BoolC False
 
 checkAllVars :: Constant -> Constant -> Constant
 checkAllVars (ExprC expr) constant =
     let vars = collectVars expr
-    in BoolC $ all (\var -> elemOp (ExprC (EVar var)) constant == BoolC True) vars
+    in BoolC $ all (\var -> findByLabelOp (ExprC (EVar var)) constant == BoolC True) vars
 checkAllVars el constant = trace ("COMMANDS checkAllVars: " ++ show el ++ "  " ++ show constant)
                   undefined
 
@@ -120,7 +127,6 @@ collectVars expr = case expr of
     EBinOP _ e1 e2   -> Set.union (collectVars e1) (collectVars e2)
     EUnOp _ e        -> collectVars e
     ETernOp _ e1 e2 e3 -> Set.unions [collectVars e1, collectVars e2, collectVars e3]
-    Cons e es        -> Set.union (collectVars e) (Set.unions (map collectVars es))
 
 varListToMap :: [Constant] -> M.Map String Expr
 varListToMap constants =
@@ -132,27 +138,25 @@ varListToMap constants =
 
 insertOp :: Constant -> Constant -> Constant -> Constant
 insertOp varToFind res (ListC varnames@(headVar@(ListC [curVar, _]) : tailVar)) =
-    let isInList = elemOp varToFind (ListC varnames)
+    let isInList = findByLabelOp varToFind (ListC varnames)
     in if isInList == BoolC True
        then ListC (map (insertInExpr varToFind res) varnames)
        else ListC $ varnames ++ [ListC [varToFind, res]]
 
 toProgramOp ::  Constant -> Constant
-toProgramOp (ListC blockConstants) = ProgramC $ Program [] (map commandsListToBlock blockConstants)
+toProgramOp (ListC blockConstants)  = ProgramC $ Program [] (map commandsListToBlock blockConstants)
 
 insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])
     | var == varname = ListC [var, res]
     | otherwise      = ListC [var, value]
 
-consOp :: Constant -> [Constant] -> Constant
-consOp (ListC []) [smth] = ListC [smth]
+consOp :: Constant -> Constant -> Constant
+consOp (ListC []) smth = ListC [smth]
 consOp (ListC xs) newElem =
-  ListC (xs ++ [ListC newElem])
+--   trace ("Apply cons operation: " ++ show xs ++ "list: " ++ show newElem)
+  ListC (xs ++ [newElem])
 consOp _ _ = error "Left-hand side must be a ListC"
-
-pairOp :: Constant -> Constant -> Constant
-pairOp const1 const2 = ListC [const1, const2]
 
 genLabelOp :: Constant -> Constant
 genLabelOp (ListC [StrC label, el2]) = StrC ("(" ++ label ++ ", " ++ extractAndSortValues el2 ++ ")")

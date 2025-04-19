@@ -27,9 +27,9 @@ abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", lInt [1, 2, 3]],
 
 dictSearchProgram :: Program
 dictSearchProgram = program ["name", "namelist", "valuelist"]
-    [ blj "initial" (if' (v "name" ?= hd (v "namelist")) "found"  "cont"), 
-      blja "cont" [ 
-        "valuelist" #= tl (v "valuelist"), 
+    [ blj "initial" (if' (v "name" ?= hd (v "namelist")) "found"  "cont"),
+      blja "cont" [
+        "valuelist" #= tl (v "valuelist"),
         "namelist" #= tl (v "namelist")] (goto "initial"),
       blj "found" (Return (hd (v "valuelist")))
     ]
@@ -66,15 +66,30 @@ specMix = do
                 Left err -> putStrLn $ "Error: " ++ show err
                 Right (EConstant (ProgramC value)) -> value `shouldBe` dictSearchProgramResult
                 _ -> undefined
-        -- it "should specialize the dictionary search program correctly with dynamic if" $ do
-        --     let staticV = generateStaticVars dictSearchProgram dictSearchDynamicIf
-        --     result <- eval mix (M.fromList [ ("program", EConstant $ ProgramC dictSearchProgram)
-        --                                    , ("division", EConstant staticV)
-        --                                    , ("vs_0", EConstant dictSearchDynamicIf)
-        --                                    ])
-        --     case result of
-        --         Left err -> putStrLn $ "Error: " ++ show err
-        --         Right (EConstant (ProgramC value)) -> print ("AAAAAAAA:" ++ show value)
+        it "should specialize the dictionary search program correctly with dynamic if" $ do
+            let staticV = generateStaticVars dictSearchProgram dictSearchDynamicIf
+            result <- eval mix (M.fromList [ ("program", EConstant $ ProgramC dictSearchProgram)
+                                           , ("division", EConstant staticV)
+                                           , ("vs_0", EConstant dictSearchDynamicIf)
+                                           ])
+            case result of
+                Left err -> putStrLn $ "Error: " ++ show err
+                Right (EConstant (ProgramC value)) -> print ("AAAAAAAA:" ++ show value)
+        it "should apply smth" $ do
+            result <- eval myProg (M.fromList [ ("namelist", EConstant $ lStr ["Bob", "Charlie", "Alice"]),
+                                                ("valuelist", EConstant $ lStr ["Bobby", "Hopstone", "Fuggy"])])
+            case result of
+                Left err -> putStrLn $ "Error: " ++ show err
+                Right value -> value `shouldBe` EConstant (s "Fuggy")
 
 
+
+myProg :: Program
+myProg =
+    program ["valuelist", "namelist"]
+    [BasicBlock (Label "(initial, 'name'=Alice)") []
+            (If (EBinOP Equal (EConstant (StrC "Alice")) (EUnOp Hd (EVar (VarName "namelist")))) (Label "(found, 'name'=Alice)") (Label "(cont, 'name'=Alice)")),
+     BasicBlock (Label "(found, 'name'=Alice)") [] (Return (EUnOp Hd (EVar (VarName "valuelist")))),
+     BasicBlock (Label "(cont, 'name'=Alice)") [Assigment {var = VarName "valuelist", expr = EUnOp Tl (EVar (VarName "valuelist"))}, Assigment {var = VarName "namelist", expr = EUnOp Tl (EVar (VarName "namelist"))}]
+            (If (EBinOP Equal (EConstant (StrC "Alice")) (EUnOp Hd (EVar (VarName "namelist")))) (Label "(found, 'name'=Alice)") (Label "(cont, 'name'=Alice)"))]
 

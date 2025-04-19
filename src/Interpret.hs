@@ -60,7 +60,7 @@ handleLabel (Label labelName) _ = do
 
 handleJumpBlock :: BasicBlock -> EvalM Expr
 handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) =
-    -- trace ("goto :" ++ show goLabel)
+    trace ("goto :" ++ show goLabel)
     handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     val <- reduceExpr curExpr
@@ -81,7 +81,7 @@ evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
     result <- reduceExpr expr1
-    traceM ("Varname: " ++ varName ++ " = " ++ show result)
+    -- traceM ("Varname: " ++ varName ++ " = " ++ show result)
     (currentVarMap, currentLabelMap) <- get
     let updatedVarMap = M.insert varName result currentVarMap
     put (updatedVarMap, currentLabelMap)
@@ -117,7 +117,8 @@ reduceExpr (EBinOP op expr1 expr2) = do
     (currentVarMap, _) <- get
     leftEl <- reduceExpr expr1
     rightEl <- reduceExpr expr2
-    -- traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
+    -- traceM ("Current var map:" ++ show currentVarMap)
+    traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
     case op of
         Reduce ->
             -- trace "start reduce"
@@ -131,11 +132,6 @@ reduceExpr (ETernOp op exp1 exp2 exp3) = do
     secEl <- reduceExpr exp2
     thirdEl <- reduceExpr exp3
     applyTernOp firstEl secEl thirdEl op
-reduceExpr (Cons expr1 lexpr) = do
-    leftEl <- reduceExpr expr1
-    reducedList <- traverse reduceExpr lexpr
-    -- traceM ("current CONS" ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show reducedList)
-    applyConsOp leftEl reducedList
 
 getUnOpFunc :: UnOp -> (Constant -> Constant)
 getUnOpFunc op = case op of
@@ -155,7 +151,7 @@ getBinOpFunc op = case op of
     IsStatic  -> checkAllVars
     Elem      -> elemOp
     Eval      -> evalOp
-    Pair      -> pairOp
+    Cons      -> consOp
 
 getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
 getTernOpFunc op = case op of
@@ -172,10 +168,11 @@ applyUnOp expr1 op = do
 applyBinOp :: Expr -> Expr -> BinOp  -> EvalM Expr
 applyBinOp expr1 expr2 op = do
     -- traceM ("apply binary operation: op: " ++ show op ++ "expr1 " ++ show expr1 ++ " expr2: " ++ show expr2)
-    case (expr1, expr2) of
-        (EConstant c1, EConstant c2) -> return $ EConstant (getBinOpFunc op c1 c2)
-        (expr, EConstant c2)         -> return $ EConstant (getBinOpFunc op (ExprC expr) c2)
-        _                            -> return $ EBinOP op expr1 expr2
+    case (expr1, expr2, op) of
+        (EConstant c1, EConstant c2, _) -> return $ EConstant (getBinOpFunc op c1 c2)
+        (expr, EConstant c2, _)         -> return $ EConstant (getBinOpFunc op (ExprC expr) c2)
+        (EConstant c1, expr, Cons)      -> return $ EConstant (getBinOpFunc op c1 (ExprC expr))
+        _                               -> return $ EBinOP op expr1 expr2
 
 
 applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
@@ -183,16 +180,6 @@ applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
         (EVar c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op (ExprC expr1) c2 c3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
-
-applyConsOp :: Expr -> [Expr] -> EvalM Expr
-applyConsOp e exprList = do
-    traceM ("Apply cons operation: " ++ show e ++ " expresion list: " ++ show exprList)
-    let answ = map (\expr -> case expr of
-            EConstant cnst -> cnst
-            expr -> ExprC expr) exprList
-    case e of
-        EConstant l@(ListC _) -> return $ EConstant (consOp l answ)
-        _ -> undefined
 
 
 reduceOp :: Expr -> Expr -> Expr

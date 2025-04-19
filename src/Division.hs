@@ -5,6 +5,7 @@ import Debug.Trace (traceM, trace)
 import Ast
 import Dsl
 import Data.List (nub, sort, (\\), intersect, length)
+import Interpret (VarMap)
 
 -- generate all vars 
 allProgramVars :: Program -> [VarName]

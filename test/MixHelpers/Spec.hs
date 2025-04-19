@@ -3,12 +3,14 @@ module MixHelpers.Spec where
 import Test.Hspec
 import Data.List (sort)
 
-import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp, blockToCommandsList, commandsListToBlock, toProgramOp)
-import Interpret(reduceOp)
+import InterpretOp(lookupOp, headOp, tailOp, elemOp, insertOp, blockToCommandsList, commandsListToBlock, toProgramOp, checkAllVars)
+import Interpret(reduceOp, eval)
 import Division
 import Dsl
 import Ast
 import Test.Tasty.Runners (Outcome(Failure))
+import qualified Data.Map.Strict as M
+import InterpretOp (findByLabelOp)
 
 testProgramXY = program ["k", "n"]
             [bja ["x" #= (4 :: Int)] (goto "f"),
@@ -48,13 +50,13 @@ specDivision = do
 
 answer1 :: Constant
 answer1 = ListC [
-    ListC [s "l2"],
+    s "l2",
     ListC [s "assigment", ExprC $ v "a", ExprC $ v "c"],
     ListC [s "if", ExprC $ EConstant $ IntC 1, s "l1", s "l2"]]
 
 answer2 :: Constant
 answer2 = ListC [
-    ListC [s "check"],
+    s "check",
     ListC [s "assigment", ExprC $ v "y", ExprC $ EConstant $ IntC 6],
     ListC [s "assigment", ExprC $ v "l", ExprC $ v "n"],
     ListC [s "return", ExprC $ v "x"]]
@@ -76,23 +78,23 @@ specLookup = do
             let result = lookupOp env varnameToFind
             result `shouldBe` IntC 1
 
-specElem :: Spec
-specElem = do
-    describe "Test elem on testABC" $ do
+specIsStatic :: Spec
+specIsStatic = do
+    describe "Test checkAllVars on testABC" $ do
         it "correctly not find element in static variables" $ do
             let staticVariables = generateStaticVars testABC abStatic
             let bb = lookupOp (ProgramC testABC) (s "l1")
             let command = headOp $ tailOp bb
             let x = headOp $ tailOp command
-            let trueFalse = elemOp x staticVariables
+            let trueFalse = checkAllVars x staticVariables
             trueFalse `shouldBe` BoolC False
-    describe "Test elem on testProgramXY" $ do
+    describe "Test checkAllVars on testProgramXY" $ do
         it "correctly find element in static variables" $ do
             let staticVariables = generateStaticVars testProgramXY xyStatic
             let bb = lookupOp (ProgramC testProgramXY) (s "check")
             let command = headOp $ tailOp bb
             let x = headOp $ tailOp command
-            let trueFalse = elemOp x staticVariables
+            let trueFalse = checkAllVars x staticVariables
             trueFalse `shouldBe` BoolC True
 
 specInsert :: Spec
@@ -103,13 +105,13 @@ specInsert = do
                     ListC [ExprC (EVar (VarName "a")), IntC 1],
                     ListC [ExprC (EVar (VarName "b")), IntC 2]
                   ]
-            let varToFind = ExprC (EVar (VarName "c"))  
-            let res = IntC 3  
+            let varToFind = ExprC (EVar (VarName "c"))
+            let res = IntC 3
             let updatedList = insertOp varToFind res varnames
             let expectedList = ListC [
                     ListC [ExprC (EVar (VarName "a")), IntC 1],
                     ListC [ExprC (EVar (VarName "b")), IntC 2],
-                    ListC [ExprC (EVar (VarName "c")), IntC 3] 
+                    ListC [ExprC (EVar (VarName "c")), IntC 3]
                   ]
             updatedList `shouldBe` expectedList
 
@@ -118,12 +120,12 @@ specInsert = do
                     ListC [ExprC (EVar (VarName "a")), IntC 1],
                     ListC [ExprC (EVar (VarName "b")), IntC 2]
                   ]
-            let varToFind = ExprC (EVar (VarName "b"))  
-            let res = IntC 3 
+            let varToFind = ExprC (EVar (VarName "b"))
+            let res = IntC 3
             let updatedList = insertOp varToFind res varnames
             let expectedList = ListC [
                     ListC [ExprC (EVar (VarName "a")), IntC 1],
-                    ListC [ExprC (EVar (VarName "b")), IntC 3]  
+                    ListC [ExprC (EVar (VarName "b")), IntC 3]
                   ]
             updatedList `shouldBe` expectedList
 
@@ -138,10 +140,10 @@ specReduce = do
             let expectedExpr = EBinOP Plus (EConstant $ IntC 1) (v "b")
             reducedExpr `shouldBe` expectedExpr
         it "correctly handles expressions with constants" $ do
-            let expr = EBinOP Plus (v "a") (EConstant $ IntC 2)  
+            let expr = EBinOP Plus (v "a") (EConstant $ IntC 2)
             let varnames = EConstant $ ListC [ListC [ExprC (v "a"), IntC 1]]
             let reducedExpr = reduceOp expr varnames
-            let expectedExpr = EConstant $ IntC 3 
+            let expectedExpr = EConstant $ IntC 3
             reducedExpr `shouldBe` expectedExpr
 
 
@@ -155,8 +157,57 @@ specToFromPrgrm = describe "blockToCommandsList and commandsListToBlock roundtri
         basicBlock1 `shouldBe` reversedBasicBlock
     it "should correctly convert back to Constant format" $ do
         let block = ProgramC $ program [] [blj "tail_and_head_b" (Return (EConstant (ListC [IntC 6, IntC 8, IntC 9])))]
-            
+
         let expectedConstant = ListC [ ListC [
-                        ListC [StrC "tail_and_head_b"],
+                        StrC "tail_and_head_b",
                         ListC [StrC "return", ListC [IntC 6, IntC 8, IntC 9]]]]
-        block `shouldBe` toProgramOp expectedConstant   
+        block `shouldBe` toProgramOp expectedConstant
+
+specList :: Spec
+specList =  describe "List Operations" $ do
+    it "creates empty list" $ do
+        result <- eval (program [] [bja ["emptyList" #= list' []] (Return (v "emptyList"))]) M.empty
+        case result of
+            Left err -> putStrLn $ "Error: " ++ show err
+            Right value -> value `shouldBe` EConstant (ListC [])
+    it "handles mixed constants and expressions" $ do
+        result <- eval
+                    (program ["a", "b"] [bja ["multiList" #= list' [EConstant $ s "assigment", v "a", v "b"]] (Return (v "multiList"))])
+                    (M.fromList [ ("a", EConstant $ IntC 1)
+                                , ("b", EConstant $ IntC 2)])
+        case result of
+            Left err -> putStrLn $ "Error: " ++ show err
+            Right value -> value `shouldBe` EConstant (ListC [StrC "assigment", IntC 1, IntC 2])
+    it "handles pair" $ do
+        result <- eval
+            (program ["vs_0", "b"] [bja ["pair" #= pair (EConstant $ s "initial") (v "vs_0")] (Return (v "pair"))])
+            (M.fromList [ ("vs_0", EConstant $ lInt [1, 2, 3])
+                        , ("b", EConstant $ IntC 2)])
+        case result of
+            Left err -> putStrLn $ "Error: " ++ show err
+            Right value -> value `shouldBe` EConstant (ListC [StrC "initial", lInt [1, 2, 3]])
+
+
+specElem :: Spec
+specElem = do
+    describe "Test elemOp" $ do
+        it "finds an element in a simple list" $ do
+            let list = ListC [StrC "found", StrC "missing", StrC "target"]
+            elemOp (StrC "target") list `shouldBe` BoolC True
+            elemOp (StrC "not here") list `shouldBe` BoolC False
+
+        it "finds an element in nested lists" $ do
+            let nestedList = ListC [
+                    ListC [StrC "initial", ListC [StrC "nested", StrC "Alice"]],
+                    ListC [StrC "found", ListC [StrC "target", StrC "Alice"]],
+                    ListC [StrC "cont", ListC [StrC "other", StrC "Bob"]]]
+            findByLabelOp (StrC "initial") nestedList `shouldBe` BoolC True
+            findByLabelOp (StrC "missing") nestedList `shouldBe` BoolC False
+
+        it "handles the complex example from your binary function" $ do
+            let leftEl = ListC [StrC "found", ListC [ListC [ExprC (EVar (VarName "name")), StrC "Alice"]]]
+            let rightEl = ListC [
+                    ListC [StrC "initial", ListC [ListC [ExprC (EVar (VarName "name")), StrC "Alice"]]],
+                    ListC [StrC "found", ListC [ListC [ExprC (EVar (VarName "name")), StrC "Alice"]]],
+                    ListC [StrC "cont", ListC [ListC [ExprC (EVar (VarName "name")), StrC "Alice"]]]]
+            elemOp leftEl rightEl `shouldBe` BoolC True

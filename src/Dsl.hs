@@ -59,6 +59,9 @@ bja :: [Assigment] -> Jump -> BasicBlock
 bja = BasicBlock EmptyLabel
 
 -- Lists
+emptyList :: Constant
+emptyList = ListC []
+
 lInt :: [Int] -> Constant
 lInt elems = ListC (map IntC elems)
 
@@ -86,8 +89,8 @@ toprogram = EUnOp ToPrgrm
 cons :: Constant -> Expr -> Expr
 cons cnst = pl (EConstant $ ListC [cnst])
 
-cons' :: Expr -> [Expr] -> Expr
-cons' = Cons
+cons' :: Expr -> Expr -> Expr
+cons' = EBinOP Cons
 
 drpWhile :: Expr -> Expr -> Expr
 drpWhile = EBinOP DropWhile
@@ -132,7 +135,10 @@ s :: String -> Constant
 s = StrC
 
 pair :: Expr -> Expr -> Expr
-pair = EBinOP Pair 
+pair expr1 expr2 = EConstant (ListC []) `cons'` expr1 `cons'` expr2
+
+list' :: [Expr] -> Expr
+list' = foldl cons' (EConstant (ListC []))
 
 genLabel :: Expr -> Expr
 genLabel = EUnOp GenLabel

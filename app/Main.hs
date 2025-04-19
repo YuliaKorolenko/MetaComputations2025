@@ -34,9 +34,7 @@ dictSearchStatic =  ListC [ListC [ExprC $ EVar $ VarName "name", s "Alice"],
 maxProgramWithConditions :: Program
 maxProgramWithConditions = program ["a", "b", "c"]
     [blja "initial" ["a" #= tl (v "b")] (goto "tail_and_head_a"),
-    blja "tail_and_head_a" [ "tail_a" #= tl (v "a"), "head_a" #= hd (v "a")] (goto "tail_and_head_b"),
-    blja "tail_and_head_b" ["tail_b" #= tl (v "b"), "head_b" #= hd (v "b")] (goto "tail_and_head_c"),
-    blja "tail_and_head_c" ["tail_c" #= tl (v "c"), "head_c" #= hd (v "tail_a")] (Return (pl (v "tail_a") (v "tail_c")))]
+    blja "tail_and_head_a" [ "tail_a" #= tl (v "a"), "head_a" #= hd (v "a")] (Return (v "tail_and_head_b"))]
 
 maxProgramWithConditionsResult :: Program
 maxProgramWithConditionsResult = program []

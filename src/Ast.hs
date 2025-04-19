@@ -30,8 +30,8 @@ data BinOp = Plus |
              IsStatic |
              Eval |
              Reduce |
-             Pair | 
-             Except
+             Except |
+             Cons
                 deriving (Show, Eq)
 
 data UnOp = Hd |
@@ -40,14 +40,14 @@ data UnOp = Hd |
             GenLabel  
             deriving (Show, Eq)
 
-data TernOp = Insert deriving (Show, Eq)
+data TernOp = Insert 
+              deriving (Show, Eq)
 
 data Expr = EConstant Constant |
             EVar VarName |
             EBinOP BinOp Expr Expr |
             EUnOp UnOp Expr |
-            ETernOp TernOp Expr Expr Expr |
-            Cons Expr [Expr]
+            ETernOp TernOp Expr Expr Expr 
                 deriving (Show, Typeable, Eq)
 
 data Constant = IntC Int | 

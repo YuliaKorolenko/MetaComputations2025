@@ -9,25 +9,24 @@ mix :: Program
 mix = program ["program", "division", "vs_0"]
     [
         blja "init" [
-            "pending" #= ListC [],
-            "pending" #= cons'  (v "pending") [pair (EConstant $ s "initial") (v "vs_0")],
+            "pending" #= cons' (EConstant emptyList) (pair (EConstant $ s "initial") (v "vs_0")),
             "marked" #= ListC [ ],
-            "residual" #= ListC []
+            "residual" #= emptyList
         ] (goto "while-0") ,
         blj "while-0"
-            (if' ("pending" ?=  ListC []) "end-0" "begin-0" ),
+            (if' ("pending" ?= emptyList) "end-0" "begin-0" ),
         blja "begin-0" [
             "pair_pend" #= hd (v "pending"),
             "pp" #= hd (v "pair_pend"),
             "vs" #= hd (tl (v "pair_pend")),
             "pending" #= tl (v "pending"),
-            "marked" #= cons' (v "marked") [v "pair_pend"],
+            "marked" #= cons' (v "marked") (v "pair_pend"),
             "bb" #= lookup' (v "program") (v "pp"),
-            "label_name_bb"  #= hd (hd (v "bb")),
+            "label_name_bb"  #= hd (v "bb"),
             "bb" #= tl (v "bb"),
-            "code" #=  cons' (EConstant (ListC [])) [cons' (EConstant (ListC [])) [genLabel $ pair (v "label_name_bb") (v "vs")]] -- code : initial_code(pp, vs)
+            "code" #=  cons' (EConstant emptyList) (genLabel $ pair (v "label_name_bb") (v "vs")) -- code : initial_code(pp, vs)
             ] (goto "while-1"),
-        blj "while-1" (if' ("bb" ?= ListC []) "end-1" "begin-1"),
+        blj "while-1" (if' ("bb" ?= emptyList) "end-1" "begin-1"),
         blja "begin-1" [
             "command" #= hd (v "bb"),
             "bb" #= tl (v "bb"),
@@ -50,7 +49,7 @@ mix = program ["program", "division", "vs_0"]
             ] (goto "while-1"),
         blja "assigment-false" [
             "reduceX" #= reduce' (v "exp") (v "vs"),
-            "code" #= cons' (v "code") [EConstant $ s "assigment", v "X", v "reduceX"] -- to code. 
+            "code" #= cons' (v "code") (list' [EConstant $ s "assigment", v "X", v "reduceX"]) -- to code. 
             ] (goto "while-1"),
 
         blja "if-0" [
@@ -76,7 +75,7 @@ mix = program ["program", "division", "vs_0"]
 
         blja "if_dynamic" [
             "reduceExpr" #= reduce' (v "exp") (v "vs"),
-            "code" #= cons' (v "code") [EConstant $ s "if", v "reduceRexpr", genLabel $ pair (v "true_label") (v "vs"), genLabel $ pair (v "false_label") (v "vs")],
+            "code" #= cons' (v "code") (list' [EConstant $ s "if", v "reduceExpr", genLabel $ pair (v "true_label") (v "vs"), genLabel $ pair (v "false_label") (v "vs")]),
             "true_pair" #= pair (v "true_label") (v "vs"),
             "false_pair" #= pair (v "false_label") (v "vs")
             ] (goto "add_true_label_if"),
@@ -85,14 +84,14 @@ mix = program ["program", "division", "vs_0"]
             "is_true_elem" #= v "true_pair" `elem'` v "marked"
             ] (if' (v "is_true_elem" ?= True) "add_false_label_if" "add_true_label"),
         blja "add_true_label" [
-            "pending" #= cons' (v "pending") [v "true_pair"]
+            "pending" #= cons' (v "pending") (v "true_pair")
             ] (goto "add_false_label_if"),    
 
         blja "add_false_label_if" [
             "is_false_elem" #= v "false_pair" `elem'` v "marked"
             ] (if' (v "is_false_elem" ?= True) "while-1" "add_false_label"),
         blja "add_false_label" [
-            "pending" #= cons' (v "pending") [v "false_pair"]
+            "pending" #= cons' (v "pending") (v "false_pair")
             ] (goto "while-1"),  
 
         blja "goto-0" [
@@ -105,15 +104,15 @@ mix = program ["program", "division", "vs_0"]
         blja "return-0" [
             "rexpr" #= hd (tl (v "command")),
             "reduceRexpr" #= reduce' (v "rexpr") (v "vs"),
-            "code" #= cons' (v "code") [EConstant $ s "return", v "reduceRexpr"]
+            "code" #= cons' (v "code") (list' [EConstant $ s "return", v "reduceRexpr"])
             ] (goto "while-1"),        
 
         blj "end-1" (goto "residual"),
         blja "residual" [
-            "residual" #= cons' (v "residual") [v "code"]
+            "residual" #= cons' (v "residual") (v "code")
             ] (goto "while-0"),
         blja "end-0" [
-            "residual_program" #= toprogram (v "residual")
+            "residual_program" #= toprogram (v "residual") 
             ] (Return (v "residual_program"))
     ]
 

@@ -17,3 +17,5 @@ main = do
     hspec specReduce
     hspec specToFromPrgrm
     hspec specMix
+    hspec specIsStatic
+    hspec specList
