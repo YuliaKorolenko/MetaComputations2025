@@ -15,6 +15,7 @@ import Data.Type.Equality (TestEquality)
 import Dsl (program)
 import InterpretOp
 
+
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
 
 type VarMap = M.Map String Expr
@@ -137,7 +138,6 @@ getUnOpFunc :: UnOp -> (Constant -> Constant)
 getUnOpFunc op = case op of
     Hd -> headOp
     Tl -> tailOp
-    ToPrgrm -> toProgramOp
     GenLabel -> genLabelOp
 
 getBinOpFunc :: BinOp -> (Constant -> Constant -> Constant)
@@ -156,6 +156,7 @@ getBinOpFunc op = case op of
 getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
 getTernOpFunc op = case op of
     Insert -> insertOp
+    ToPrgrm -> toProgramOp
 
 
 applyUnOp :: Expr -> UnOp -> EvalM Expr
@@ -179,6 +180,7 @@ applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
 applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
         (EVar c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op (ExprC expr1) c2 c3)
+        (EConstant smth1, EConstant smth2, EConstant smth3) -> return $ EConstant (getTernOpFunc op smth1 smth2 smth3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
 
 
@@ -205,3 +207,9 @@ evalOp (ExprC expr) (ListC constants) = do
 evalOp e1 e2 = do
     -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
             undefined
+
+-- toProgramOp ::  Constant -> Constant -> Constant -> Constant
+-- toProgramOp (ListC blockConstants) division (ProgramC prgrm) =
+--     -- trace ("toProgramOp Varname: " ++ show (allProgramVars prgrm \\ divisionToVarnameList division))
+--     ProgramC $ Program (allProgramVars prgrm \\ divisionToVarnameList division)
+--                        (map commandsListToBlock blockConstants)

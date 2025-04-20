@@ -112,7 +112,7 @@ mix = program ["program", "division", "vs_0"]
             "residual" #= cons' (v "residual") (v "code")
             ] (goto "while-0"),
         blja "end-0" [
-            "residual_program" #= toprogram (v "residual") 
+            "residual_program" #= toprogram (v "residual") (v "division") (v "program")
             ] (Return (v "residual_program"))
     ]
 

@@ -156,12 +156,13 @@ specToFromPrgrm = describe "blockToCommandsList and commandsListToBlock roundtri
         let reversedBasicBlock = commandsListToBlock $ blockToCommandsList basicBlock1
         basicBlock1 `shouldBe` reversedBasicBlock
     it "should correctly convert back to Constant format" $ do
-        let block = ProgramC $ program [] [blj "tail_and_head_b" (Return (EConstant (ListC [IntC 6, IntC 8, IntC 9])))]
+        let blockProgram = ProgramC $ program [] [blj "tail_and_head_b" (Return (EConstant (ListC [IntC 6, IntC 8, IntC 9])))]
+        let staticV = [s "tail_and_head_b"]
 
         let expectedConstant = ListC [ ListC [
                         StrC "tail_and_head_b",
                         ListC [StrC "return", ListC [IntC 6, IntC 8, IntC 9]]]]
-        block `shouldBe` toProgramOp expectedConstant
+        blockProgram `shouldBe` toProgramOp expectedConstant (ListC staticV) blockProgram
 
 specList :: Spec
 specList =  describe "List Operations" $ do

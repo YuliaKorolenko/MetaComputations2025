@@ -18,7 +18,7 @@ maxProgramWithConditions = program ["a", "b", "c"]
     blja "tail_and_head_c" ["tail_c" #= tl (v "c"), "head_c" #= hd (v "tail_a")] (Return (pl (v "tail_a") (v "tail_c")))]
 
 maxProgramWithConditionsResult :: Program
-maxProgramWithConditionsResult = program []
+maxProgramWithConditionsResult = program ["c", "tail_c"]
     [blja "(initial, 'a'=[1,2,3]; 'b'=[5,6,8,9])" ["tail_c" #= tl (v "c")] (Return (pl (EConstant $ lInt [8, 9]) (v "tail_c")))]
 
 abStatic :: Constant
@@ -42,7 +42,7 @@ dictSearchDynamicIf :: Constant
 dictSearchDynamicIf =  ListC [ListC [ExprC $ EVar $ VarName "name", s "Alice"]]
 
 dictSearchProgramResult :: Program
-dictSearchProgramResult = program []
+dictSearchProgramResult = program ["valuelist"]
     [ blja "(initial, 'name'=Alice; 'namelist'=[Bob,Charlie,Alice])" ["valuelist" #= tl (v "valuelist"), "valuelist" #= tl (v "valuelist")] (Return (hd (v "valuelist")))]
 
 
@@ -74,22 +74,16 @@ specMix = do
                                            ])
             case result of
                 Left err -> putStrLn $ "Error: " ++ show err
-                Right (EConstant (ProgramC value)) -> print ("AAAAAAAA:" ++ show value)
-        it "should apply smth" $ do
-            result <- eval myProg (M.fromList [ ("namelist", EConstant $ lStr ["Bob", "Charlie", "Alice"]),
-                                                ("valuelist", EConstant $ lStr ["Bobby", "Hopstone", "Fuggy"])])
-            case result of
-                Left err -> putStrLn $ "Error: " ++ show err
-                Right value -> value `shouldBe` EConstant (s "Fuggy")
+                Right (EConstant (ProgramC prgrm)) -> do
+                    result <- eval prgrm (M.fromList [ ("namelist", EConstant $ lStr ["Bob", "Alice", "Charlie"]),
+                                                          ("valuelist", EConstant $ lStr ["Bobby", "Hopstone", "Fuggy"])])
+                    case result of
+                        Left err -> putStrLn $ "Error: " ++ show err
+                        Right value -> value `shouldBe` EConstant (s "Hopstone")
+                    result <- eval prgrm (M.fromList [ ("namelist", EConstant $ lStr ["Apple", "Banana", "Orange", "Alice"]),
+                                        ("valuelist", EConstant $ lInt [1, 9, 12, 1456])])
+                    case result of
+                        Left err -> putStrLn $ "Error: " ++ show err
+                        Right value -> value `shouldBe` EConstant (IntC 1456)
 
-
-
-myProg :: Program
-myProg =
-    program ["valuelist", "namelist"]
-    [BasicBlock (Label "(initial, 'name'=Alice)") []
-            (If (EBinOP Equal (EConstant (StrC "Alice")) (EUnOp Hd (EVar (VarName "namelist")))) (Label "(found, 'name'=Alice)") (Label "(cont, 'name'=Alice)")),
-     BasicBlock (Label "(found, 'name'=Alice)") [] (Return (EUnOp Hd (EVar (VarName "valuelist")))),
-     BasicBlock (Label "(cont, 'name'=Alice)") [Assigment {var = VarName "valuelist", expr = EUnOp Tl (EVar (VarName "valuelist"))}, Assigment {var = VarName "namelist", expr = EUnOp Tl (EVar (VarName "namelist"))}]
-            (If (EBinOP Equal (EConstant (StrC "Alice")) (EUnOp Hd (EVar (VarName "namelist")))) (Label "(found, 'name'=Alice)") (Label "(cont, 'name'=Alice)"))]
 

@@ -83,8 +83,8 @@ hd = EUnOp Hd
 tl :: Expr -> Expr
 tl = EUnOp Tl
 
-toprogram :: Expr -> Expr
-toprogram = EUnOp ToPrgrm
+toprogram :: Expr -> Expr -> Expr -> Expr
+toprogram = ETernOp ToPrgrm
 
 cons :: Constant -> Expr -> Expr
 cons cnst = pl (EConstant $ ListC [cnst])

@@ -31,16 +31,16 @@ data BinOp = Plus |
              Eval |
              Reduce |
              Except |
-             Cons
+             Cons 
                 deriving (Show, Eq)
 
 data UnOp = Hd |
             Tl |
-            ToPrgrm |
             GenLabel  
             deriving (Show, Eq)
 
-data TernOp = Insert 
+data TernOp = Insert |
+              ToPrgrm 
               deriving (Show, Eq)
 
 data Expr = EConstant Constant |

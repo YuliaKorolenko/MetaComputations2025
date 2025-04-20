@@ -1,13 +1,14 @@
 module InterpretOp where
 
 import Ast
-import Data.List(nub, find)
+import Data.List(nub, find, (\\))
 import qualified Data.Map.Strict as M
 import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Debug.Trace (trace)
 import Data.Map (Map)
 import qualified Data.Set as Set
 import Data.Ord (comparing)
+import Division (allProgramVars)
 import qualified Data.List as L
 
 equal :: Constant -> Constant -> Constant
@@ -143,8 +144,8 @@ insertOp varToFind res (ListC varnames@(headVar@(ListC [curVar, _]) : tailVar)) 
        then ListC (map (insertInExpr varToFind res) varnames)
        else ListC $ varnames ++ [ListC [varToFind, res]]
 
-toProgramOp ::  Constant -> Constant
-toProgramOp (ListC blockConstants)  = ProgramC $ Program [] (map commandsListToBlock blockConstants)
+divisionToVarnameList :: Constant -> [VarName]
+divisionToVarnameList (ListC exprList) = map (\(ExprC (EVar varName)) -> varName) exprList
 
 insertInExpr :: Constant -> Constant -> Constant -> Constant
 insertInExpr varname res (ListC [var, value])
@@ -180,3 +181,9 @@ showConstant (IntC i) = show i
 showConstant (StrC s) = s
 showConstant (ExprC e) = show e
 
+
+toProgramOp ::  Constant -> Constant -> Constant -> Constant
+toProgramOp (ListC blockConstants) division (ProgramC prgrm) =
+    -- trace ("toProgramOp Varname: " ++ show (allProgramVars prgrm \\ divisionToVarnameList division))
+    ProgramC $ Program (allProgramVars prgrm \\ divisionToVarnameList division)
+                       (map commandsListToBlock blockConstants)
