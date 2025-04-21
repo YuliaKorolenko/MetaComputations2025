@@ -40,6 +40,9 @@ infixl 5 ?=
 (?=) :: (Typeable a, Typeable b) => a -> b -> Expr
 varExpr ?= expr = EBinOP Equal (toExprEqual varExpr) (toExprEqual expr)
 
+(!=) :: (Typeable a, Typeable b) => a -> b -> Expr
+varExpr != expr = EBinOP NotEqual (toExprEqual varExpr) (toExprEqual expr)
+
 -- Return
 returnCnst :: String -> Jump
 returnCnst str = Return (EVar $ VarName str)

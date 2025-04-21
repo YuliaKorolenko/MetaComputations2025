@@ -21,7 +21,7 @@ varStorageToVarnames (ListC constants) = map extractVarName constants
         extractVarName _ = error "Invalid structure in varStorageToVarnames"
 
 generateStaticVars :: Program -> Constant -> Constant
-generateStaticVars prog@(Program varnames blocks) staticVars = let
+generateStaticVars prog@(Program varnames blocks) staticVars = let 
     staticVN = allProgramVars prog \\ iterateDynamicVars blocks (varnames \\ varStorageToVarnames staticVars)
     in ListC $ map (ExprC . EVar) staticVN
 
@@ -51,3 +51,5 @@ expVarNames (EConstant _ ) = []
 expVarNames (EVar v) = [v]
 expVarNames (EBinOP _ expr1 expr2) = expVarNames expr2 ++ expVarNames expr1
 expVarNames (EUnOp _ expr) = expVarNames expr
+expVarNames (ETernOp _ expr1 expr2 expr3) = expVarNames expr3 ++ expVarNames expr2 ++ expVarNames expr1
+

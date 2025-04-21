@@ -76,10 +76,20 @@ executable MetaComp
     default-language: Haskell2010
 
 library
-  hs-source-dirs:      src
-  exposed-modules:     Interpret, Ast, Dsl, TInterpreter, Division, Mix, InterpretOp
-  build-depends:       base >=4.7 && <5, containers, mtl >= 2.2.2 && < 2.3, transformers >= 0.5.6.2
-  default-language:    Haskell2010
+    hs-source-dirs:   src
+    exposed-modules:  Ast
+                     Dsl
+                     Interpret
+                     InterpretOp
+                     Division
+                     Mix
+                     TInterpreter
+                     PrettyPrint
+    build-depends:    base >=4.7 && <5
+                     , containers
+                     , mtl >= 2.2.2 && < 2.3
+                     , transformers >= 0.5.6.2
+    default-language: Haskell2010
 
 
 test-suite flowchart-test

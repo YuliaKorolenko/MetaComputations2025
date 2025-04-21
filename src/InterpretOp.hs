@@ -10,6 +10,7 @@ import qualified Data.Set as Set
 import Data.Ord (comparing)
 import Division (allProgramVars)
 import qualified Data.List as L
+import PrettyPrint
 
 equal :: Constant -> Constant -> Constant
 equal x y =
@@ -20,6 +21,13 @@ equal x y =
     else
         -- trace ("Not equal: " ++ show x ++ "!=" ++ show y )
         BoolC False
+
+notEqualOp :: Constant -> Constant -> Constant
+notEqualOp x y =
+    if x == y
+    then BoolC False
+    else BoolC True
+
 
 dropWhileOp :: Constant -> Constant -> Constant
 dropWhileOp a (ListC b) = ListC $ dropWhile (/= a) b
@@ -167,8 +175,6 @@ consOp _ _ = error "Left-hand side must be a ListC"
 
 genLabelOp :: Constant -> Constant
 genLabelOp (ListC [StrC label, el2]) = StrC ("(" ++ label ++ ", " ++ extractAndSortValues el2 ++ ")")
-genLabelOp el = trace ("GENERATE LABEL OP: " ++ show el)
-             undefined
 
 extractAndSortValues :: Constant -> String
 extractAndSortValues (ListC items) =
@@ -191,6 +197,6 @@ showConstant p@(ProgramC (Program varnames basicBlocs)) = "ProgramC " ++ show va
 
 toProgramOp ::  Constant -> Constant -> Constant -> Constant
 toProgramOp (ListC blockConstants) division (ProgramC (Program varnames basicBlocs)) =
-    -- trace ("toProgramOp Varname: " ++ show (allProgramVars prgrm \\ divisionToVarnameList division))
+    trace ("toProgramOp Varname: " ++ prettyPrintConstant (ProgramC (Program varnames basicBlocs)) ++ " division: " ++ show division)
     ProgramC $ Program (varnames \\ divisionToVarnameList division)
                        (map commandsListToBlock blockConstants)

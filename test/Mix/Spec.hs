@@ -64,7 +64,7 @@ specMix = do
                                            ])
             case result of
                 Left err -> putStrLn $ "Error: " ++ show err
-                Right (EConstant (ProgramC value)) -> value `shouldBe` dictSearchProgramResult
+                Right (EConstant (ProgramC value)) -> do value `shouldBe` dictSearchProgramResult
                 _ -> undefined
         it "should specialize the dictionary search program correctly with dynamic if" $ do
             let staticV = generateStaticVars dictSearchProgram dictSearchDynamicIf
@@ -85,5 +85,3 @@ specMix = do
                     case result of
                         Left err -> putStrLn $ "Error: " ++ show err
                         Right value -> value `shouldBe` EConstant (IntC 1456)
-
-

@@ -22,6 +22,7 @@ data Assigment = Assigment { var :: VarName, expr :: Expr } deriving (Show, Eq)
 
 data BinOp = Plus |
              Equal | 
+             NotEqual |
              DropWhile | 
              Drop | 
              Union |

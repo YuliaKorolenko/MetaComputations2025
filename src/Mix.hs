@@ -14,7 +14,7 @@ mix = program ["program", "division", "vs_0"]
             "residual" #= emptyList
         ] (goto "while-0") ,
         blj "while-0"
-            (if' ("pending" ?= emptyList) "end-0" "begin-0" ),
+            (if' ("pending" != emptyList) "begin-0" "end-0"),
         blja "begin-0" [
             "pair_pend" #= hd (v "pending"),
             "pp" #= hd (v "pair_pend"),

@@ -14,6 +14,8 @@ import Ast
 import Data.Type.Equality (TestEquality)
 import Dsl (program)
 import InterpretOp
+import PrettyPrint
+import Data.Maybe (fromMaybe)
 
 
 data Error = UndefinedVar String | VariableNotFound String | UnexpectedElement String deriving (Show)
@@ -28,7 +30,7 @@ evalVarMap (Program ((VarName varName) : varTail) basicBlocks) varMap = do
     -- liftIO $ traceM "evalVarMap"
     case M.lookup varName varMap of
         Just val -> do
-            -- traceM ("Curren var here : " ++ show varName ++ " " ++ show val)
+            traceM ("Curren var here : " ++ show varName ++ " " ++ prettyPrintExpr val)
             (currentVarMap, currentLabelMap) <- get
             let updatedState = M.insert varName val currentVarMap
             put (updatedState, currentLabelMap)
@@ -73,16 +75,26 @@ handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
 handleJumpBlock (BasicBlock _ _ (Return curExpr)) = reduceExpr curExpr
 
 evalBasicBlocks :: [BasicBlock] -> EvalM Expr
-evalBasicBlocks (block@(BasicBlock _ assigments _) : _) = do
-    -- traceM "evalBasicBlocks jump"
+evalBasicBlocks (block@(BasicBlock label assigments _) : _) = do
+    (currentVarMap, _) <- get
+    case (M.lookup "division" currentVarMap, label) of
+        (Just val, Label "initial") -> liftIO $ traceM ("Evaluating block with label: " ++ show "initial" ++
+            "\nDivision value: " ++ show val ++ "varMap: ")
+        -- Nothing -> liftIO $ traceM ("Evaluating block with label: " ++ show label ++
+        --     "\nDivision value: not found")
+        _ -> return ()
     evalAssigments assigments
     handleJumpBlock block
-evalBasicBlocks [] =  lift $ throwE $ UnexpectedElement "Missing return value in any block"
+evalBasicBlocks [] = lift $ throwE $ UnexpectedElement "Missing return value in any block"
 
 evalAssigments :: [Assigment] -> EvalM ()
 evalAssigments (Assigment (VarName varName) expr1 : assigmentTail) = do
     result <- reduceExpr expr1
-    -- traceM ("Varname: " ++ varName ++ " = " ++ show result)
+    -- let debug = prettyPrintExpr result
+    -- if length debug > 100 then
+    --     traceM ("Varname: " ++ varName )
+    -- else
+    --     traceM ("Varname: " ++ varName ++ " = " ++ debug)
     (currentVarMap, currentLabelMap) <- get
     let updatedVarMap = M.insert varName result currentVarMap
     put (updatedVarMap, currentLabelMap)
@@ -142,6 +154,7 @@ getBinOpFunc :: BinOp -> (Constant -> Constant -> Constant)
 getBinOpFunc op = case op of
     Plus      -> plus
     Equal     -> equal
+    NotEqual  -> notEqualOp
     DropWhile -> dropWhileOp
     Drop      -> dropOp
     Union     -> unionOp
@@ -169,15 +182,15 @@ applyBinOp expr1 expr2 op = do
     -- traceM ("apply binary operation: op: " ++ show op ++ " expr1: " ++ show expr1 ++ " expr2: " ++ show expr2)
     case (expr1, expr2, op) of
         (EConstant c1, EConstant c2, _) -> return $ EConstant (getBinOpFunc op c1 c2)
-        _                               -> 
-            trace ("return " ++ show op)
-            return $ EBinOP op expr1 expr2
+        _   -> return $ EBinOP op expr1 expr2
 
 
 applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
 applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
-        (EConstant smth1, EConstant smth2, EConstant smth3) -> return $ EConstant (getTernOpFunc op smth1 smth2 smth3)
+        (EConstant smth1, EConstant smth2, EConstant smth3) -> do
+            traceM ("apply ternary operation: " ++ show op ++" expr2: " ++ prettyPrintConstant smth2 ++ " expr3: " ++ prettyPrintConstant smth3)
+            return $ EConstant (getTernOpFunc op smth1 smth2 smth3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
 
 
@@ -187,10 +200,9 @@ reduceOp (EConstant (ExprC expr)) (EConstant (ListC constants)) = do
     case result of
         Left e -> undefined
         Right value ->
-            -- trace ("reduce operation: " ++ show value)
+            -- trace ("reduce operation: " ++ prettyPrintExpr (EConstant (ListC constants)) ++ " ____ " ++ prettyPrintExpr value)
             (ExprC value)
-reduceOp a1 a2 = trace ("Reduce op: " ++ show a1 ++ "  _:_ " ++ show a2)
-                undefined
+reduceOp a1 a2 = ExprC $ EBinOP Reduce a1 a2
 
 evalOp :: Constant -> Constant -> Constant
 evalOp (ExprC expr) (ListC constants) = do
