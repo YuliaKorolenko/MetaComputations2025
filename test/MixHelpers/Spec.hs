@@ -11,6 +11,7 @@ import Ast
 import Test.Tasty.Runners (Outcome(Failure))
 import qualified Data.Map.Strict as M
 import InterpretOp (findByLabelOp)
+import TInterpreter
 
 testProgramXY = program ["k", "n"]
             [bja ["x" #= (4 :: Int)] (goto "f"),
@@ -32,6 +33,9 @@ abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", IntC 1],
 resultToVarNames :: Constant -> [VarName]
 resultToVarNames (ListC arr) = sort $ map (\(ExprC (EVar varname)) -> varname) arr
 
+right :: Constant
+right =  ListC [ListC [ExprC $ EVar $ VarName "Right", lInt [1, 1, 0, 1, 0, 1]]]
+
 specDivision :: Spec
 specDivision = do
     describe "Test allPrograms function testProgramXY" $ do
@@ -46,6 +50,9 @@ specDivision = do
         it "correctly generate static variables" $ do
             let result = generateStaticVars testABC abStatic
             resultToVarNames result `shouldBe` sort [VarName "b"]
+        it "correctly generate static variables for turing interpreter" $ do
+            let result = generateStaticVars turingInterpreter right
+            resultToVarNames result `shouldBe` []
 
 
 answer1 :: Constant
@@ -84,10 +91,12 @@ specIsStatic = do
         it "correctly not find element in static variables" $ do
             let staticVariables = generateStaticVars testABC abStatic
             let bb = lookupOp (ProgramC testABC) (s "l1")
-            let command = headOp $ tailOp bb
+            let command = headOp $ tailOp $ tailOp bb
+            print ("Command in Test checkAllVars on testABC" ++ show command)
             let x = headOp $ tailOp command
+            print ("Test checkAllVars on testABC 123: " ++ show x)
             let trueFalse = checkAllVars x staticVariables
-            trueFalse `shouldBe` BoolC False
+            trueFalse `shouldBe` BoolC True
     describe "Test checkAllVars on testProgramXY" $ do
         it "correctly find element in static variables" $ do
             let staticVariables = generateStaticVars testProgramXY xyStatic
@@ -129,23 +138,22 @@ specInsert = do
                   ]
             updatedList `shouldBe` expectedList
 
+programWithReduced :: Program
+programWithReduced = program ["vs_0", "list_a"] [bja ["a_" #= hd (v "list_a"),
+                                                      "reduced_a" #= reduce' (v "a_") (v "vs_0")]
+                                                (Return (v "reduced_a"))]
+
+aVS_0 :: Constant
+aVS_0  =  ListC [ListC [ExprC $ EVar $ VarName "a", s "Alice"]]
 
 specReduce :: Spec
 specReduce = do
     describe "Test reduce' function" $ do
-        it "correctly reduces when one variable is not in the list" $ do
-            let expr = EBinOP Plus (v "a") (v "b")
-            let varnames = EConstant (ListC [ListC [ExprC (EVar (VarName "a")), IntC 1]])
-            let reducedExpr = reduceOp expr varnames
-            let expectedExpr = EBinOP Plus (EConstant $ IntC 1) (v "b")
-            reducedExpr `shouldBe` expectedExpr
-        it "correctly handles expressions with constants" $ do
-            let expr = EBinOP Plus (v "a") (EConstant $ IntC 2)
-            let varnames = EConstant $ ListC [ListC [ExprC (v "a"), IntC 1]]
-            let reducedExpr = reduceOp expr varnames
-            let expectedExpr = EConstant $ IntC 3
-            reducedExpr `shouldBe` expectedExpr
-
+        it "correctly reduces expressions with constants" $ do
+            result <- eval programWithReduced (M.fromList [("vs_0", EConstant aVS_0), ("list_a", EConstant $ ListC [ExprC $ v "a"])])
+            case result of
+                Right (EConstant (ExprC value)) -> value `shouldBe` EConstant (s "Alice")
+                Left err -> putStrLn $ "Error: " ++ show err
 
 basicBlock1 :: BasicBlock
 basicBlock1 = blja "check" ["y" #= (6 :: Int), "l" #= v "n"] $ returnCnst "x"

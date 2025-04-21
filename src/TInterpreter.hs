@@ -6,7 +6,7 @@ import Ast
 turingInterpreter :: Program
 turingInterpreter = program ["Q", "Right"]
                     [
-                        blja  "init"  ["QTail" #= "Q", "Left" #= ListC []] (goto "loop"),   -- init: QTail := Q; Left := '();
+                        blja  "initial"  ["QTail" #= "Q", "Left" #= ListC []] (goto "loop"),   -- init: QTail := Q; Left := '();
                         blj "loop"  (if' (v "QTail" ?= ListC []) "stop" "cont"),                   -- "loop: if QTail = '() goto stop else cont;"
                         blj "stop"  (returnCnst "Right"),                                                -- stop : return right;
                         blja  "cont"  ["Instruction" #= hd (v "QTail"),               -- cont : Instruction := First_instruction(QTail);

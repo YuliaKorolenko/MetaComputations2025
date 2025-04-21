@@ -70,10 +70,9 @@ lStr elems = ListC (map StrC elems)
 
 lConst :: [Expr] -> Expr
 lConst exprs = EConstant $ ListC $ map exprToConstant exprs
-
-exprToConstant :: Expr -> Constant
-exprToConstant (EConstant c) = c
-exprToConstant expr = ExprC expr
+  where exprToConstant :: Expr -> Constant
+        exprToConstant (EConstant c) = c
+        exprToConstant expr = ExprC expr
 
 -- Operations
 
@@ -85,9 +84,6 @@ tl = EUnOp Tl
 
 toprogram :: Expr -> Expr -> Expr -> Expr
 toprogram = ETernOp ToPrgrm
-
-cons :: Constant -> Expr -> Expr
-cons cnst = pl (EConstant $ ListC [cnst])
 
 cons' :: Expr -> Expr -> Expr
 cons' = EBinOP Cons

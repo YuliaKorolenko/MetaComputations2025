@@ -7,54 +7,19 @@ import Dsl
 import TInterpreter
 import Division
 import System.IO
-import Interpret 
+import Interpret
 import Mix
-import Prelude 
-import Ast 
-
-
-maxSmall :: Program
-maxSmall = program ["a", "b", "c"]
-    [blja "initial" [ "tail_a" #= tl (v "b"), "head_a" #= hd (v "a")] (goto "tail_and_head_b"),
-     blja "tail_and_head_b" ["tail_b" #= tl (v "b"), "head_b" #= hd (v "b")] (Return (v "tail_a"))]
-
-dictSearchProgram :: Program
-dictSearchProgram = program ["name", "namelist", "valuelist"]
-    [ blj "initial" (if' (v "name" ?= hd (v "namelist")) "found"  "cont"), 
-      blja "cont" [ 
-        "valuelist" #= tl (v "valuelist"), 
-        "namelist" #= tl (v "namelist")] (goto "initial"),
-      blj "found" (Return (hd (v "valuelist")))
-    ]
-
-dictSearchStatic :: Constant
-dictSearchStatic =  ListC [ListC [ExprC $ EVar $ VarName "name", s "Alice"],
-                           ListC [ExprC $ EVar $ VarName "namelist", lStr ["Bob", "Charlie", "Alice"]]]
-
-maxProgramWithConditions :: Program
-maxProgramWithConditions = program ["a", "b", "c"]
-    [blja "initial" ["a" #= tl (v "b")] (goto "tail_and_head_a"),
-    blja "tail_and_head_a" [ "tail_a" #= tl (v "a"), "head_a" #= hd (v "a")] (Return (v "tail_and_head_b"))]
-
-maxProgramWithConditionsResult :: Program
-maxProgramWithConditionsResult = program []
-    [blja "initial" ["tail_c" #= tl (v "c")] (Return (pl (EConstant $ lInt [8, 9]) (v "tail_c")))]
-
-abStatic :: Constant
-abStatic = ListC [ListC [ExprC $ EVar $ VarName "a", lInt [1, 2, 3]],
-                  ListC [ExprC $ EVar $ VarName "b", lInt [5, 6, 8, 9]]]
-
-dictSearchDynamicIf :: Constant
-dictSearchDynamicIf =  ListC [ListC [ExprC $ EVar $ VarName "name", s "Alice"]]
+import Prelude
+import Ast
 
 main :: IO ()
 main = do
-    let staticV = generateStaticVars dictSearchProgram dictSearchDynamicIf
-    result <- eval mix (M.fromList [ ("program", EConstant $ ProgramC dictSearchProgram)
-                                    , ("division", EConstant staticV)
-                                    , ("vs_0", EConstant dictSearchDynamicIf)
-                                    ])
-    case result of
-        Left err -> putStrLn $ "Error: " ++ show err
-        Right (EConstant (ProgramC value)) -> print ("AAAAAAAA:" ++ show value)
-                            
+    let staticTuring = generateStaticVars turingInterpreter (ListC [])
+    let vs_0 = ListC [ListC [ExprC $ EVar $ VarName "program", ProgramC turingInterpreter],
+                        ListC [ExprC $ EVar $ VarName "division", staticTuring],
+                        ListC [ExprC $ EVar $ VarName "vs_0", ListC []]]
+    let staticMix = generateStaticVars turingInterpreter vs_0
+    result <- eval mix (M.fromList [ ("program", EConstant $ ProgramC mix)
+                        , ("division", EConstant  staticMix)
+                        , ("vs_0", EConstant vs_0)])
+    print result

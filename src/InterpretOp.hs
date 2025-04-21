@@ -114,12 +114,18 @@ elemOp findEl (ListC (curEl : tail)) =
     else elemOp findEl (ListC tail)
 elemOp _ (ListC []) = BoolC False
 
+isStaticOp :: Constant -> Constant -> Constant
+isStaticOp (ExprC expr) constantList = checkAllVars (ExprC expr) constantList
+isStaticOp expr constantList = trace ("isStaticOp: " ++ show expr ++ "  " ++ show constantList)
+                               undefined
+
 checkAllVars :: Constant -> Constant -> Constant
 checkAllVars (ExprC expr) constant =
     let vars = collectVars expr
-    in BoolC $ all (\var -> findByLabelOp (ExprC (EVar var)) constant == BoolC True) vars
+    -- in  trace ("COMMANDS checkAllVars: " ++ show expr ++ "  " ++ show constant)
+      in BoolC $ all (\var -> findByLabelOp (ExprC (EVar var)) constant == BoolC True) vars
 checkAllVars el constant = trace ("COMMANDS checkAllVars: " ++ show el ++ "  " ++ show constant)
-                  undefined
+                          undefined
 
 collectVars :: Expr -> Set.Set VarName
 collectVars expr = case expr of
@@ -180,10 +186,11 @@ showConstant (ListC items) = "[" ++ L.intercalate "," (map showConstant items) +
 showConstant (IntC i) = show i
 showConstant (StrC s) = s
 showConstant (ExprC e) = show e
-
+showConstant (BoolC b) = show b
+showConstant p@(ProgramC (Program varnames basicBlocs)) = "ProgramC " ++ show varnames ++ " " ++ show basicBlocs
 
 toProgramOp ::  Constant -> Constant -> Constant -> Constant
-toProgramOp (ListC blockConstants) division (ProgramC prgrm) =
+toProgramOp (ListC blockConstants) division (ProgramC (Program varnames basicBlocs)) =
     -- trace ("toProgramOp Varname: " ++ show (allProgramVars prgrm \\ divisionToVarnameList division))
-    ProgramC $ Program (allProgramVars prgrm \\ divisionToVarnameList division)
+    ProgramC $ Program (varnames \\ divisionToVarnameList division)
                        (map commandsListToBlock blockConstants)

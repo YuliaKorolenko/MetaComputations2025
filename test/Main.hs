@@ -5,6 +5,7 @@ import FlowChart.Spec
 import TuringMachine.Spec
 import MixHelpers.Spec
 import Mix.Spec
+import Futamura.Spec
 
 main :: IO ()
 main = do
@@ -19,3 +20,4 @@ main = do
     hspec specMix
     hspec specIsStatic
     hspec specList
+    hspec specFutamura1

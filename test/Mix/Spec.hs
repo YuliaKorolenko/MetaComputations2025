@@ -18,7 +18,7 @@ maxProgramWithConditions = program ["a", "b", "c"]
     blja "tail_and_head_c" ["tail_c" #= tl (v "c"), "head_c" #= hd (v "tail_a")] (Return (pl (v "tail_a") (v "tail_c")))]
 
 maxProgramWithConditionsResult :: Program
-maxProgramWithConditionsResult = program ["c", "tail_c"]
+maxProgramWithConditionsResult = program ["c"]
     [blja "(initial, 'a'=[1,2,3]; 'b'=[5,6,8,9])" ["tail_c" #= tl (v "c")] (Return (pl (EConstant $ lInt [8, 9]) (v "tail_c")))]
 
 abStatic :: Constant

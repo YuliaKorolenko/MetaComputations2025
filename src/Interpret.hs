@@ -61,11 +61,11 @@ handleLabel (Label labelName) _ = do
 
 handleJumpBlock :: BasicBlock -> EvalM Expr
 handleJumpBlock (BasicBlock _ _ instr@(Goto goLabel)) =
-    trace ("goto :" ++ show goLabel)
+    -- trace ("goto :" ++ show goLabel)
     handleLabel goLabel instr
 handleJumpBlock (BasicBlock _ _ instr@(If curExpr trueLabel falseLabel)) = do
     val <- reduceExpr curExpr
-    traceM ("IF block: " ++ show val ++ " true-Label: " ++ show trueLabel ++ " false-Label: " ++ show falseLabel)
+    -- traceM ("IF block: " ++ show val ++ " true-Label: " ++ show trueLabel ++ " false-Label: " ++ show falseLabel)
     case val of
         EConstant (IntC 1) -> handleLabel trueLabel instr
         EConstant (BoolC True) -> handleLabel trueLabel instr
@@ -105,9 +105,6 @@ reduceExpr (EConstant constant) = return $ EConstant constant
 reduceExpr v@(EVar (VarName varName)) = do
     (currentVarMap, _) <- get
     case M.lookup varName currentVarMap of
-        Just (EConstant (ExprC l)) ->
-                -- trace "1111111111"
-                reduceExpr l
         Just element   ->
             -- trace "22222222222"
             return element
@@ -116,14 +113,15 @@ reduceExpr v@(EVar (VarName varName)) = do
             return v
 reduceExpr (EBinOP op expr1 expr2) = do
     (currentVarMap, _) <- get
+    -- traceM ("before reduce : " ++ show op ++ " expr1: " ++ show expr1 ++ "  expr2: " ++ show expr2)
     leftEl <- reduceExpr expr1
     rightEl <- reduceExpr expr2
     -- traceM ("Current var map:" ++ show currentVarMap)
-    traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
+    -- traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
     case op of
         Reduce ->
             -- trace "start reduce"
-            return$ reduceOp leftEl rightEl
+            return $ EConstant $ reduceOp leftEl rightEl
         _ -> applyBinOp leftEl rightEl op
 reduceExpr (EUnOp op expr) = do
     res <- reduceExpr expr
@@ -148,7 +146,7 @@ getBinOpFunc op = case op of
     Drop      -> dropOp
     Union     -> unionOp
     Lookup    -> lookupOp
-    IsStatic  -> checkAllVars
+    IsStatic  -> isStaticOp
     Elem      -> elemOp
     Eval      -> evalOp
     Cons      -> consOp
@@ -168,31 +166,30 @@ applyUnOp expr1 op = do
 
 applyBinOp :: Expr -> Expr -> BinOp  -> EvalM Expr
 applyBinOp expr1 expr2 op = do
-    -- traceM ("apply binary operation: op: " ++ show op ++ "expr1 " ++ show expr1 ++ " expr2: " ++ show expr2)
+    -- traceM ("apply binary operation: op: " ++ show op ++ " expr1: " ++ show expr1 ++ " expr2: " ++ show expr2)
     case (expr1, expr2, op) of
         (EConstant c1, EConstant c2, _) -> return $ EConstant (getBinOpFunc op c1 c2)
-        (expr, EConstant c2, _)         -> return $ EConstant (getBinOpFunc op (ExprC expr) c2)
-        (EConstant c1, expr, Cons)      -> return $ EConstant (getBinOpFunc op c1 (ExprC expr))
-        _                               -> return $ EBinOP op expr1 expr2
+        _                               -> 
+            trace ("return " ++ show op)
+            return $ EBinOP op expr1 expr2
 
 
 applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
 applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
-        (EVar c1, EConstant c2, EConstant c3) -> return $ EConstant (getTernOpFunc op (ExprC expr1) c2 c3)
         (EConstant smth1, EConstant smth2, EConstant smth3) -> return $ EConstant (getTernOpFunc op smth1 smth2 smth3)
         _                                           -> return $ ETernOp op expr1 expr2 expr3
 
 
-reduceOp :: Expr -> Expr -> Expr
-reduceOp expr (EConstant (ListC constants)) = do
+reduceOp :: Expr -> Expr -> Constant
+reduceOp (EConstant (ExprC expr)) (EConstant (ListC constants)) = do
     let result = unsafePerformIO $ runExceptT $ evalStateT (reduceExpr expr) (varListToMap constants, M.empty)
     case result of
         Left e -> undefined
         Right value ->
             -- trace ("reduce operation: " ++ show value)
-            value
-reduceOp a1 a2 = -- trace ("Reduce op: " ++ show a1 ++ "  _:_ " ++ show a2)
+            (ExprC value)
+reduceOp a1 a2 = trace ("Reduce op: " ++ show a1 ++ "  _:_ " ++ show a2)
                 undefined
 
 evalOp :: Constant -> Constant -> Constant
@@ -200,16 +197,4 @@ evalOp (ExprC expr) (ListC constants) = do
     let result = unsafePerformIO $ runExceptT $ evalStateT (evalExpr expr) (varListToMap constants, M.empty)
     case result of
         Left e -> undefined
-        Right value ->
-            -- trace ("eval op: " ++ show value)
-            -- trace ("changed Map: " ++ show changedMap)
-            value
-evalOp e1 e2 = do
-    -- trace ("eval op: " ++ show e1 ++ "  _:_   " ++ show e2)
-            undefined
-
--- toProgramOp ::  Constant -> Constant -> Constant -> Constant
--- toProgramOp (ListC blockConstants) division (ProgramC prgrm) =
---     -- trace ("toProgramOp Varname: " ++ show (allProgramVars prgrm \\ divisionToVarnameList division))
---     ProgramC $ Program (allProgramVars prgrm \\ divisionToVarnameList division)
---                        (map commandsListToBlock blockConstants)
+        Right value -> value

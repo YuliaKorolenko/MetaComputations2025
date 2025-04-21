@@ -8,7 +8,7 @@ import Interpret
 mix :: Program
 mix = program ["program", "division", "vs_0"]
     [
-        blja "init" [
+        blja "initial" [
             "pending" #= cons' (EConstant emptyList) (pair (EConstant $ s "initial") (v "vs_0")),
             "marked" #= ListC [ ],
             "residual" #= emptyList
