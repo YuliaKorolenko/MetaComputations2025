@@ -120,7 +120,7 @@ elemOp findEl (ListC (curEl : tail)) =
     if findEl == curEl
     then BoolC True
     else elemOp findEl (ListC tail)
-elemOp _ (ListC []) = BoolC False
+elemOp findEl (ListC []) = BoolC False
 
 isStaticOp :: Constant -> Constant -> Constant
 isStaticOp (ExprC expr) constantList = checkAllVars (ExprC expr) constantList

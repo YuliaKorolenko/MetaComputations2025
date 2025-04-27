@@ -48,6 +48,7 @@ mix = program ["program", "division", "vs_0"]
             "vs" #= insert' (v "X") (v "evalX") (v "vs")
             ] (goto "while-1"),
         blja "assigment-false" [
+            -- "reduceX" #= reduce' (v "exp") (v "vs"),
             "reduceX" #= reduce' (v "exp") (v "vs"),
             "code" #= cons' (v "code") (list' [EConstant $ s "assigment", v "X", v "reduceX"]) -- to code. 
             ] (goto "while-1"),
@@ -85,27 +86,27 @@ mix = program ["program", "division", "vs_0"]
             ] (if' (v "is_true_elem" ?= True) "add_false_label_if" "add_true_label"),
         blja "add_true_label" [
             "pending" #= cons' (v "pending") (v "true_pair")
-            ] (goto "add_false_label_if"),    
+            ] (goto "add_false_label_if"),
 
         blja "add_false_label_if" [
             "is_false_elem" #= v "false_pair" `elem'` v "marked"
             ] (if' (v "is_false_elem" ?= True) "while-1" "add_false_label"),
         blja "add_false_label" [
             "pending" #= cons' (v "pending") (v "false_pair")
-            ] (goto "while-1"),  
+            ] (goto "while-1"),
 
         blja "goto-0" [
             "pp_" #= hd ( tl (v "command")),
             "bb" #= lookup' (v "program") (v "pp_"),
             "label_name_bb"  #= hd (v "bb"),
             "bb" #= tl (v "bb")
-            ] (goto "while-1"),    
+            ] (goto "while-1"),
 
         blja "return-0" [
             "rexpr" #= hd (tl (v "command")),
             "reduceRexpr" #= reduce' (v "rexpr") (v "vs"),
             "code" #= cons' (v "code") (list' [EConstant $ s "return", v "reduceRexpr"])
-            ] (goto "while-1"),        
+            ] (goto "while-1"),
 
         blj "end-1" (goto "residual"),
         blja "residual" [

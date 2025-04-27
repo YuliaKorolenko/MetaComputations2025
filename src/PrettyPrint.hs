@@ -14,11 +14,9 @@ prettyPrintVarNames vars = "[" ++ intercalate ", " (map show vars) ++ "]"
 prettyPrintBlock :: BasicBlock -> String
 prettyPrintBlock (BasicBlock label assignments jump) =
     "BasicBlock " ++ prettyPrintLabel label ++ "\n" ++
+    "   Assigment: " ++
     intercalate "\n" (map ("    " ++) (map prettyPrintAssignment assignments)) ++ "\n" ++
-    "  Jump: " ++ prettyPrintJump jump
-prettyPrintBlock (BasicBlock label [] jump) =
-    prettyPrintLabel label ++ ":\n" ++
-    "  Jump: " ++ prettyPrintJump jump
+    "   Jump: " ++ prettyPrintJump jump
 
 prettyPrintLabel :: Label -> String
 prettyPrintLabel EmptyLabel = "<empty>"

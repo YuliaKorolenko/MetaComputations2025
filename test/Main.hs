@@ -21,3 +21,4 @@ main = do
     hspec specIsStatic
     hspec specList
     hspec specFutamura1
+    hspec specFutamura2

@@ -130,11 +130,7 @@ reduceExpr (EBinOP op expr1 expr2) = do
     rightEl <- reduceExpr expr2
     -- traceM ("Current var map:" ++ show currentVarMap)
     -- traceM ("current binary function: " ++ show op ++ " leftEl: " ++ show leftEl ++ "  rightEl: " ++ show rightEl)
-    case op of
-        Reduce ->
-            -- trace "start reduce"
-            return $ EConstant $ reduceOp leftEl rightEl
-        _ -> applyBinOp leftEl rightEl op
+    applyBinOp leftEl rightEl op
 reduceExpr (EUnOp op expr) = do
     res <- reduceExpr expr
     applyUnOp res op
@@ -163,6 +159,7 @@ getBinOpFunc op = case op of
     Elem      -> elemOp
     Eval      -> evalOp
     Cons      -> consOp
+    Reduce    -> reduceOp
 
 getTernOpFunc :: TernOp -> (Constant -> Constant -> Constant -> Constant)
 getTernOpFunc op = case op of
@@ -189,20 +186,28 @@ applyTernOp :: Expr -> Expr -> Expr -> TernOp -> EvalM Expr
 applyTernOp expr1 expr2 expr3 op = do
     case (expr1, expr2, expr3) of
         (EConstant smth1, EConstant smth2, EConstant smth3) -> do
-            traceM ("apply ternary operation: " ++ show op ++" expr2: " ++ prettyPrintConstant smth2 ++ " expr3: " ++ prettyPrintConstant smth3)
+            -- traceM ("apply ternary operation: " ++ show op ++" expr2: " ++ prettyPrintConstant smth2 ++ " expr3: " ++ prettyPrintConstant smth3)
             return $ EConstant (getTernOpFunc op smth1 smth2 smth3)
+        (smth1, EConstant smth2, EConstant smth3)  -> do
+                                                    traceM ("applyTernOp1")
+                                                    return $ ETernOp op expr1 expr2 expr3
+        (EConstant smth1, smth2, EConstant smth3)  -> do
+                                                    traceM ("applyTernOp2" ++ show smth2)
+                                                    return $ ETernOp op expr1 expr2 expr3
+        (EConstant smth1, EConstant smth2, smth3)  -> do
+                                                    traceM ("applyTernOp3")
+                                                    return $ ETernOp op expr1 expr2 expr3
         _                                           -> return $ ETernOp op expr1 expr2 expr3
 
 
-reduceOp :: Expr -> Expr -> Constant
-reduceOp (EConstant (ExprC expr)) (EConstant (ListC constants)) = do
+reduceOp :: Constant -> Constant -> Constant
+reduceOp (ExprC expr) (ListC constants) = do
     let result = unsafePerformIO $ runExceptT $ evalStateT (reduceExpr expr) (varListToMap constants, M.empty)
     case result of
         Left e -> undefined
         Right value ->
-            -- trace ("reduce operation: " ++ prettyPrintExpr (EConstant (ListC constants)) ++ " ____ " ++ prettyPrintExpr value)
-            (ExprC value)
-reduceOp a1 a2 = ExprC $ EBinOP Reduce a1 a2
+            -- trace ("reduce operation: " ++ " ____ " ++ show expr)
+            ExprC value
 
 evalOp :: Constant -> Constant -> Constant
 evalOp (ExprC expr) (ListC constants) = do
